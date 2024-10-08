@@ -121,7 +121,7 @@ impl FontFile {
             }
         }
         self.face_type = face_type;
-        num_faces as u32
+        num_faces
     }
 
     pub fn take(native: ComPtr<IDWriteFontFile>) -> FontFile {
