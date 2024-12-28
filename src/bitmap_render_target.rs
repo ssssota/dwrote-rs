@@ -8,7 +8,7 @@ use windows::Win32::Foundation::{COLORREF, FALSE, RECT};
 use windows::Win32::Graphics::DirectWrite::{
     IDWriteBitmapRenderTarget, DWRITE_GLYPH_OFFSET, DWRITE_GLYPH_RUN, DWRITE_MEASURING_MODE,
 };
-use windows::Win32::Graphics::Gdi::{GetObjectW, BITMAP, HDC, HGDIOBJ};
+use windows::Win32::Graphics::Gdi::{GetCurrentObject, GetObjectW, BITMAP, HDC, HGDIOBJ, OBJ_BITMAP};
 
 use super::{FontFace, RenderingParams};
 
@@ -92,7 +92,7 @@ impl BitmapRenderTarget {
             let memory_dc = self.get_memory_dc();
             let mut bitmap: BITMAP = zeroed();
             let ret = GetObjectW(
-                HGDIOBJ(memory_dc.0),
+                GetCurrentObject(HDC(memory_dc.0), OBJ_BITMAP),
                 size_of::<BITMAP>() as i32,
                 Some(&mut bitmap as *mut _ as *mut _),
             );
