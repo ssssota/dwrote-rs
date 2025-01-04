@@ -14,7 +14,6 @@ use windows::Win32::Graphics::DirectWrite::{
     DWriteCreateFactory, IDWriteFactory, IDWriteFontFile, IDWriteFontFileStream,
     IDWriteLocalFontFileLoader, DWRITE_FACTORY_TYPE_SHARED, DWRITE_FONT_FACE_TYPE,
     DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS,
-    DWRITE_FONT_SIMULATIONS_NONE,
 };
 
 use crate::font_face::FontFace;
@@ -33,7 +32,6 @@ impl FontFile {
         P: AsRef<Path>,
     {
         unsafe {
-            let mut font_file: *mut IDWriteFontFile = ptr::null_mut();
             let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).ok()?;
             let font_file = factory
                 .CreateFontFileReference(&HSTRING::from(path.as_ref()), None)
@@ -91,15 +89,16 @@ impl FontFile {
             let mut supported = FALSE;
             let mut _file_type = DWRITE_FONT_FILE_TYPE_UNKNOWN;
 
-            self.native
-                .Analyze(
-                    &mut supported,
-                    &mut _file_type,
-                    Some(&mut face_type),
-                    &mut num_faces,
-                )
-                .unwrap();
-            if supported == FALSE {
+            if let Ok(_) = self.native.Analyze(
+                &mut supported,
+                &mut _file_type,
+                Some(&mut face_type),
+                &mut num_faces,
+            ) {
+                if supported == FALSE {
+                    return 0;
+                }
+            } else {
                 return 0;
             }
         }
@@ -203,7 +202,7 @@ impl FontFile {
                 self.face_type,
                 &[Some(self.native.clone())],
                 face_index,
-                DWRITE_FONT_SIMULATIONS_NONE,
+                simulations,
             )?;
             Ok(FontFace::take(face))
         }
