@@ -5,24 +5,36 @@ use std::marker::Send;
 use std::mem;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{atomic, Arc, Mutex};
-use winapi::shared::basetsd::UINT32;
 use windows::core::Interface;
+use windows::Win32::Foundation::E_INVALIDARG;
 use windows::Win32::Graphics::DirectWrite::{
-    DWriteCreateFactory, IDWriteFactory, IDWriteFontFile, IDWriteFontFileLoader,
-    IDWriteFontFileStream, DWRITE_FACTORY_TYPE_SHARED,
+    DWriteCreateFactory, IDWriteFactory, IDWriteFontFile, IDWriteFontFileLoader, IDWriteFontFileLoader_Impl,
+    IDWriteFontFileStream, IDWriteFontFileStream_Impl, DWRITE_FACTORY_TYPE_SHARED,
 };
 
+#[windows::core::implement(IDWriteFontFileLoader)]
 struct FontFileLoader;
 
-impl FontFileLoader {
-    pub fn new() -> FontFileLoader {
-        FontFileLoader
+impl IDWriteFontFileLoader_Impl for FontFileLoader_Impl {
+    fn CreateStreamFromKey(
+        &self,
+        fontfilereferencekey: *const core::ffi::c_void,
+        fontfilereferencekeysize: u32,
+    ) -> windows_core::Result<IDWriteFontFileStream> {
+        if fontfilereferencekey.is_null() {
+            return Err(E_INVALIDARG.into());
+        }
+        assert!(fontfilereferencekeysize == mem::size_of::<usize>() as u32);
+
+        let key = unsafe { *(fontfilereferencekey as *const usize) };
+        match FONT_FILE_STREAM_MAP.lock().unwrap().get(&key) {
+            None => Err(E_INVALIDARG.into()),
+            Some(&FontFileStreamPtr(ref file_stream)) => Ok(file_stream.clone()),
+        }
     }
 }
 
-unsafe impl Send for FontFileLoader {}
-unsafe impl Sync for FontFileLoader {}
-
+#[windows::core::implement(IDWriteFontFileStream)]
 struct FontFileStream {
     refcount: atomic::AtomicUsize,
     key: usize,
@@ -45,6 +57,24 @@ impl Drop for FontFileStream {
     }
 }
 
+impl IDWriteFontFileStream_Impl for FontFileStream_Impl {
+    fn ReadFileFragment(&self,fragmentstart: *mut *mut core::ffi::c_void,fileoffset:u64,fragmentsize:u64,fragmentcontext: *mut *mut core::ffi::c_void) -> windows_core::Result<()> {
+        todo!()
+    }
+
+    fn ReleaseFileFragment(&self,fragmentcontext: *mut core::ffi::c_void) {
+        todo!()
+    }
+
+    fn GetFileSize(&self) -> windows_core::Result<u64> {
+        todo!()
+    }
+
+    fn GetLastWriteTime(&self) -> windows_core::Result<u64> {
+        todo!()
+    }
+}
+
 struct FontFileStreamPtr(IDWriteFontFileStream);
 
 unsafe impl Send for FontFileStreamPtr {}
@@ -63,8 +93,8 @@ lazy_static! {
     static ref FONT_FILE_LOADER: Mutex<FontFileLoaderWrapper> = {
         unsafe {
             let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap();
-            let ffl = FontFileLoader::new();
-            let ffl = IDWriteFontFileLoader::from_raw(&ffl as *const _ as *mut _);
+            let ffl = FontFileLoader {};
+            let ffl: IDWriteFontFileLoader = ffl.cast().unwrap();
             factory.RegisterFontFileLoader(&ffl).unwrap();
             Mutex::new(FontFileLoaderWrapper(ffl))
         }
@@ -79,9 +109,8 @@ impl DataFontHelper {
     ) -> (IDWriteFontFile, IDWriteFontFileStream, usize) {
         unsafe {
             let key = FONT_FILE_KEY.fetch_add(1, atomic::Ordering::Relaxed);
-            let font_file_stream_native = FontFileStream::new(key, font_data);
-            let font_file_stream =
-                IDWriteFontFileStream::from_raw(&font_file_stream_native as *const _ as *mut _);
+            let font_file_stream = FontFileStream::new(key, font_data);
+            let font_file_stream: IDWriteFontFileStream = font_file_stream.cast().unwrap();
 
             {
                 let mut map = FONT_FILE_STREAM_MAP.lock().unwrap();
@@ -93,7 +122,7 @@ impl DataFontHelper {
             let font_file = factory
                 .CreateCustomFontFileReference(
                     mem::transmute(&key),
-                    mem::size_of::<usize>() as UINT32,
+                    mem::size_of::<usize>() as u32,
                     &loader.0,
                 )
                 .unwrap();

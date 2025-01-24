@@ -113,9 +113,6 @@ pub enum FontStyle {
 }
 
 impl FontStyle {
-    fn t(&self) -> DWRITE_FONT_STYLE {
-        unsafe { mem::transmute::<FontStyle, DWRITE_FONT_STYLE>(*self) }
-    }
     pub fn to_u32(&self) -> u32 { unsafe { mem::transmute::<FontStyle, u32>(*self) } }
     pub fn from_u32(v: u32) -> FontStyle { unsafe { mem::transmute::<u32, FontStyle>(v) } }
 }

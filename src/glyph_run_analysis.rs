@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::ptr;
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::DirectWrite::{
     DWRITE_TEXTURE_ALIASED_1x1, DWRITE_TEXTURE_CLEARTYPE_3x1, DWriteCreateFactory, IDWriteFactory,
@@ -26,7 +25,6 @@ impl GlyphRunAnalysis {
     ) -> windows::core::Result<GlyphRunAnalysis> {
         unsafe {
             let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED)?;
-            let mut native: *mut IDWriteGlyphRunAnalysis = ptr::null_mut();
             let native = factory.CreateGlyphRunAnalysis(
                 glyph_run as *const DWRITE_GLYPH_RUN,
                 pixels_per_dip,

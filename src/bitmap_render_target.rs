@@ -8,7 +8,7 @@ use windows::Win32::Foundation::{COLORREF, FALSE, RECT};
 use windows::Win32::Graphics::DirectWrite::{
     IDWriteBitmapRenderTarget, DWRITE_GLYPH_OFFSET, DWRITE_GLYPH_RUN, DWRITE_MEASURING_MODE,
 };
-use windows::Win32::Graphics::Gdi::{GetCurrentObject, GetObjectW, BITMAP, HDC, HGDIOBJ, OBJ_BITMAP};
+use windows::Win32::Graphics::Gdi::{GetCurrentObject, GetObjectW, BITMAP, HDC, OBJ_BITMAP};
 
 use super::{FontFace, RenderingParams};
 
@@ -24,7 +24,7 @@ impl BitmapRenderTarget {
     // A dip is 1/96th of an inch, so this value is the number of pixels per inch divided by 96.
     pub fn set_pixels_per_dip(&self, ppd: f32) {
         unsafe {
-            self.native.SetPixelsPerDip(ppd);
+            let _ = self.native.SetPixelsPerDip(ppd);
         }
     }
 

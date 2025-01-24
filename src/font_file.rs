@@ -211,13 +211,11 @@ impl FontFile {
 
 impl Clone for FontFile {
     fn clone(&self) -> FontFile {
-        unsafe {
-            FontFile {
-                native: self.native.clone(),
-                stream: self.stream.clone(),
-                data_key: self.data_key,
-                face_type: self.face_type,
-            }
+        FontFile {
+            native: self.native.clone(),
+            stream: self.stream.clone(),
+            data_key: self.data_key,
+            face_type: self.face_type,
         }
     }
 }
