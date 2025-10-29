@@ -112,7 +112,10 @@ fn test_glyph_image() {
     let device_pixel_ratio = 1.0f32;
     let em_size = 10.0f32;
 
-    let design_units_per_em = face.metrics().metrics0().designUnitsPerEm;
+    let design_units_per_em = match face.metrics() {
+        FontMetrics::Metrics0(ref metrics) => metrics.designUnitsPerEm,
+        FontMetrics::Metrics1(ref metrics) => metrics.Base.designUnitsPerEm,
+    };
     let design_units_per_pixel = design_units_per_em as f32 / 16.;
 
     let scaled_design_units_to_pixels = (em_size * device_pixel_ratio) / design_units_per_pixel;

@@ -2,25 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::ffi::{c_void, OsString};
-use std::os::windows::ffi::OsStringExt;
-use std::path::{Path, PathBuf};
+use std::mem::MaybeUninit;
+use std::os::raw::c_void;
+use std::path::Path;
+use std::path::PathBuf;
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
-use windows::core::{Interface, HSTRING};
-use windows::Win32::Foundation::FALSE;
-use windows::Win32::Graphics::DirectWrite::{
-    DWriteCreateFactory, IDWriteFactory, IDWriteFontFile, IDWriteFontFileStream,
-    IDWriteLocalFontFileLoader, DWRITE_FACTORY_TYPE_SHARED, DWRITE_FONT_FACE_TYPE,
-    DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS,
-};
+
+use windows_core::{BOOL, HRESULT, PCWSTR, Interface};
+use windows::Win32::Graphics::DirectWrite::{IDWriteFontFile, IDWriteFontFileStream, DWRITE_FONT_FACE_TYPE, DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS, IDWriteFontFileLoader, IDWriteLocalFontFileLoader};
 
 use crate::font_face::FontFace;
-use crate::font_file_loader_impl::DataFontHelper;
+// use crate::font_file_loader_impl::DataFontHelper;
+use crate::helpers::ToWide;
 
+#[derive(Clone)]
 pub struct FontFile {
-    pub(crate) native: IDWriteFontFile,
+    native: IDWriteFontFile,
     stream: Option<IDWriteFontFileStream>,
     data_key: usize,
     face_type: DWRITE_FONT_FACE_TYPE,
@@ -32,10 +31,10 @@ impl FontFile {
         P: AsRef<Path>,
     {
         unsafe {
-            let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).ok()?;
-            let font_file = factory
-                .CreateFontFileReference(&HSTRING::from(path.as_ref()), None)
-                .ok()?;
+            let font_file = DWriteFactory().CreateFontFileReference(
+                PCWSTR(path.as_ref().as_os_str().to_wide_null().as_ptr()),
+                None,
+            ).ok()?;
 
             let mut ff = FontFile {
                 native: font_file,
@@ -86,19 +85,16 @@ impl FontFile {
         let mut face_type = DWRITE_FONT_FACE_TYPE_UNKNOWN;
         let mut num_faces = 0;
         unsafe {
-            let mut supported = FALSE;
+            let mut supported: BOOL = false.into();
             let mut _file_type = DWRITE_FONT_FILE_TYPE_UNKNOWN;
 
-            if let Ok(_) = self.native.Analyze(
-                &mut supported,
+            let result = self.native.Analyze(
+                &mut supported as *mut _,
                 &mut _file_type,
                 Some(&mut face_type),
                 &mut num_faces,
-            ) {
-                if supported == FALSE {
-                    return 0;
-                }
-            } else {
+            );
+            if let Err(_) = result {
                 return 0;
             }
         }
@@ -125,69 +121,141 @@ impl FontFile {
         }
     }
 
+    pub(crate) unsafe fn as_com_ptr(&self) -> &IDWriteFontFile {
+        &self.native
+    }
+
+    #[deprecated(note = "Use `font_file_bytes` instead.")]
+    pub fn get_font_file_bytes(&self) -> Vec<u8> {
+        self.font_file_bytes().unwrap()
+    }
+
     // This is a helper to read the contents of this FontFile,
     // without requiring callers to deal with loaders, keys,
     // or streams.
-    pub fn get_font_file_bytes(&self) -> Vec<u8> {
+    pub fn font_file_bytes(&self) -> Result<Vec<u8>, HRESULT> {
         unsafe {
-            let mut ref_key: *mut c_void = ptr::null_mut();
+            // let mut ref_key: *const c_void = ptr::null();
+            // let mut ref_key_size: u32 = 0;
+            // let hr = self.native.GetReferenceKey(&mut ref_key, &mut ref_key_size);
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+
+            // let mut loader: *mut IDWriteFontFileLoader = ptr::null_mut();
+            // let hr = self.native.GetLoader(&mut loader);
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+            // let loader = ComPtr::from_raw(loader);
+
+            // let mut stream: *mut IDWriteFontFileStream = ptr::null_mut();
+            // let hr = loader.CreateStreamFromKey(ref_key, ref_key_size, &mut stream);
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+            // let stream = ComPtr::from_raw(stream);
+
+            // let mut file_size: u64 = 0;
+            // let hr = stream.GetFileSize(&mut file_size);
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+
+            // let mut fragment_start: *const c_void = ptr::null();
+            // let mut fragment_context: *mut c_void = ptr::null_mut();
+            // let hr =
+            //     stream.ReadFileFragment(&mut fragment_start, 0, file_size, &mut fragment_context);
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+
+            // let in_ptr = slice::from_raw_parts(fragment_start as *const u8, file_size as usize);
+            // let bytes = in_ptr.to_vec();
+
+            // stream.ReleaseFileFragment(fragment_context);
+
+            // Ok(bytes)
+
+            let mut ref_key: *const c_void = ptr::null();
             let mut ref_key_size: u32 = 0;
-            self.native
-                .GetReferenceKey(&mut ref_key, &mut ref_key_size)
-                .unwrap();
+            self.native.GetReferenceKey(&mut ref_key as *mut _ as *mut *mut _, &mut ref_key_size).map_err(|e| e.code())?;
+            let loader = self.native.GetLoader().map_err(|e| e.code())?;
+            let stream = loader.CreateStreamFromKey(ref_key, ref_key_size).map_err(|e| e.code())?;
 
-            let loader = self.native.GetLoader().unwrap();
+            let file_size = stream.GetFileSize().map_err(|e| e.code())?;
+            
+            let mut fragment_start = MaybeUninit::uninit();
+            let mut fragment_context = MaybeUninit::uninit();
+            stream.ReadFileFragment(fragment_start.as_mut_ptr(), 0, file_size, fragment_context.as_mut_ptr()).map_err(|e| e.code())?;
 
-            let stream = loader.CreateStreamFromKey(ref_key, ref_key_size).unwrap();
-
-            let file_size = stream.GetFileSize().unwrap();
-
-            let mut fragment_start: *mut c_void = ptr::null_mut();
-            let mut fragment_context: *mut c_void = ptr::null_mut();
-            stream
-                .ReadFileFragment(&mut fragment_start, 0, file_size, &mut fragment_context)
-                .unwrap();
-
-            let in_ptr = slice::from_raw_parts(fragment_start as *const u8, file_size as usize);
+            let in_ptr = slice::from_raw_parts(fragment_start.assume_init() as *const u8, file_size as usize);
             let bytes = in_ptr.to_vec();
 
-            stream.ReleaseFileFragment(fragment_context);
-
-            bytes
+            stream.ReleaseFileFragment(fragment_context.assume_init());
+            Ok(bytes)
         }
+    }
+
+    #[deprecated(note = "Use `font_file_path` instead.")]
+    pub fn get_font_file_path(&self) -> Option<PathBuf> {
+        self.font_file_path().ok()
     }
 
     // This is a helper to get the path of a font file,
     // without requiring callers to deal with loaders.
-    pub fn get_font_file_path(&self) -> Option<PathBuf> {
+    pub fn font_file_path(&self) -> Result<PathBuf, HRESULT> {
         unsafe {
-            let mut ref_key: *mut c_void = ptr::null_mut();
+            // let mut ref_key: *const c_void = ptr::null();
+            // let mut ref_key_size: u32 = 0;
+            // let hr = self.native.GetReferenceKey(&mut ref_key, &mut ref_key_size);
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+
+            // let mut loader: *mut IDWriteFontFileLoader = ptr::null_mut();
+            // let hr = self.native.GetLoader(&mut loader);
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+            // let loader = ComPtr::from_raw(loader);
+
+            // let local_loader: ComPtr<IDWriteLocalFontFileLoader> = loader.cast()?;
+
+            // let mut file_path_len = 0;
+            // let hr =
+            //     local_loader.GetFilePathLengthFromKey(ref_key, ref_key_size, &mut file_path_len);
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+
+            // let mut file_path_buf = vec![0; file_path_len as usize + 1];
+            // let hr = local_loader.GetFilePathFromKey(
+            //     ref_key,
+            //     ref_key_size,
+            //     file_path_buf.as_mut_ptr(),
+            //     file_path_len + 1,
+            // );
+            // if hr != S_OK {
+            //     return Err(hr);
+            // }
+
+            // if let Some(&0) = file_path_buf.last() {
+            //     file_path_buf.pop();
+            // }
+
+            // Ok(PathBuf::from(OsString::from_wide(&file_path_buf)))
+
+            let mut ref_key: *const c_void = ptr::null();
             let mut ref_key_size: u32 = 0;
-            self.native
-                .GetReferenceKey(&mut ref_key, &mut ref_key_size)
-                .ok()?;
-
-            let loader = self.native.GetLoader().ok()?;
-
-            let local_loader = match loader.cast::<IDWriteLocalFontFileLoader>() {
-                Ok(local_loader) => local_loader,
-                Err(_) => return None,
-            };
-
-            let file_path_len = local_loader
-                .GetFilePathLengthFromKey(ref_key, ref_key_size)
-                .ok()?;
-
-            let mut file_path_buf = vec![0; file_path_len as usize + 1];
-            local_loader
-                .GetFilePathFromKey(ref_key, ref_key_size, &mut file_path_buf)
-                .ok()?;
-
-            if let Some(&0) = file_path_buf.last() {
-                file_path_buf.pop();
-            }
-
-            Some(PathBuf::from(OsString::from_wide(&file_path_buf)))
+            self.native.GetReferenceKey(&mut ref_key as *mut _ as *mut *mut _, &mut ref_key_size).map_err(|e| e.code())?;
+            let loader = self.native.GetLoader().map_err(|e| e.code())?;
+            let local_loader = loader.cast::<IDWriteLocalFontFileLoader>().map_err(|e| e.code())?;
+            let len = local_loader.GetFilePathLengthFromKey(ref_key, ref_key_size).map_err(|e| e.code())?;
+            let mut file_path = Vec::<u16>::with_capacity((len + 1) as usize);
+            file_path.set_len((len + 1) as usize);
+            local_loader.GetFilePathFromKey(ref_key, ref_key_size, &mut file_path).map_err(|e| e.code())?;
+            Ok(PathBuf::from(String::from_utf16(&file_path).ok().unwrap()))
         }
     }
 
@@ -197,25 +265,39 @@ impl FontFile {
         simulations: DWRITE_FONT_SIMULATIONS,
     ) -> windows::core::Result<FontFace> {
         unsafe {
-            let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED)?;
-            let face = factory.CreateFontFace(
-                self.face_type,
-                &[Some(self.native.clone())],
-                face_index,
-                simulations,
-            )?;
+            // let mut face: *mut IDWriteFontFace = ptr::null_mut();
+            // let ptr = self.as_com_ptr();
+            // let hr = (*DWriteFactory()).CreateFontFace(
+            //     self.face_type,
+            //     1,
+            //     &ptr.as_raw(),
+            //     face_index,
+            //     simulations,
+            //     &mut face,
+            // );
+            // if hr != 0 {
+            //     Err(hr)
+            // } else {
+            //     Ok(FontFace::take(ComPtr::from_raw(face)))
+            // }
+
+            let face = DWriteFactory()
+                .CreateFontFace(self.face_type, fontfiles, face_index, simulations)
+                .map_err(|e| e.code())?;
             Ok(FontFace::take(face))
         }
     }
 }
 
-impl Clone for FontFile {
-    fn clone(&self) -> FontFile {
-        FontFile {
-            native: self.native.clone(),
-            stream: self.stream.clone(),
-            data_key: self.data_key,
-            face_type: self.face_type,
-        }
-    }
-}
+// impl Clone for FontFile {
+//     fn clone(&self) -> FontFile {
+//         unsafe {
+//             FontFile {
+//                 native: self.native.clone(),
+//                 stream: (*self.stream.get()).clone(),
+//                 data_key: self.data_key,
+//                 face_type: self.face_type,
+//             }
+//         }
+//     }
+// }

@@ -10,13 +10,23 @@
 use std::borrow::Cow;
 use std::sync::atomic::AtomicUsize;
 use winapi::ctypes::wchar_t;
-use windows::core::HSTRING;
-use windows::Win32::Foundation::BOOL;
-use windows::Win32::Graphics::DirectWrite::{
-    DWriteCreateFactory, IDWriteFactory, IDWriteNumberSubstitution, DWRITE_FACTORY_TYPE_SHARED,
-    DWRITE_NUMBER_SUBSTITUTION_METHOD, DWRITE_READING_DIRECTION,
-};
-use windows::Win32::System::SystemServices::LOCALE_NAME_MAX_LENGTH;
+use winapi::shared::basetsd::UINT32;
+use winapi::shared::guiddef::REFIID;
+use winapi::shared::minwindef::{FALSE, TRUE, ULONG};
+use winapi::shared::ntdef::LOCALE_NAME_MAX_LENGTH;
+use winapi::shared::winerror::{E_INVALIDARG, S_OK};
+use winapi::um::dwrite::IDWriteTextAnalysisSource;
+use winapi::um::dwrite::IDWriteTextAnalysisSourceVtbl;
+use winapi::um::dwrite::DWRITE_READING_DIRECTION;
+use winapi::um::unknwnbase::{IUnknown, IUnknownVtbl};
+use winapi::um::winnt::HRESULT;
+use windows_core::PCWSTR;
+
+use windows::Win32::Graphics::DirectWrite::{DWRITE_NUMBER_SUBSTITUTION_METHOD, IDWriteNumberSubstitution};
+
+use super::DWriteFactory;
+use crate::com_helpers::Com;
+use crate::helpers::ToWide;
 
 /// The Rust side of a custom text analysis source implementation.
 pub trait TextAnalysisSourceMethods {
@@ -214,14 +224,11 @@ impl NumberSubstitution {
         ignore_user_overrides: bool,
     ) -> NumberSubstitution {
         unsafe {
-            let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap();
-            let mut native = factory
-                .CreateNumberSubstitution(
-                    subst_method,
-                    &HSTRING::from(locale),
-                    BOOL::from(ignore_user_overrides),
-                )
-                .unwrap();
+            let native = DWriteFactory().CreateNumberSubstitution(
+                subst_method,
+                PCWSTR(locale.to_wide_null().as_ptr()),
+                ignore_user_overrides,
+            ).expect("error creating number substitution");
             NumberSubstitution { native }
         }
     }

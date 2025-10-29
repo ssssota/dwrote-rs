@@ -2,13 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::mem::{size_of, zeroed, ManuallyDrop};
+use std::mem::{ManuallyDrop, MaybeUninit, size_of};
 use std::slice;
-use windows::Win32::Foundation::{COLORREF, FALSE, RECT};
-use windows::Win32::Graphics::DirectWrite::{
-    IDWriteBitmapRenderTarget, DWRITE_GLYPH_OFFSET, DWRITE_GLYPH_RUN, DWRITE_MEASURING_MODE,
-};
-use windows::Win32::Graphics::Gdi::{GetCurrentObject, GetObjectW, BITMAP, HDC, OBJ_BITMAP};
+
+use windows::Win32::Foundation::{COLORREF, RECT};
+use windows::Win32::Graphics::Gdi::{BITMAP, GetCurrentObject, GetObjectW, HDC, OBJ_BITMAP};
+use windows::Win32::Graphics::DirectWrite::{IDWriteBitmapRenderTarget, DWRITE_GLYPH_RUN, DWRITE_MEASURING_MODE, DWRITE_GLYPH_OFFSET};
 
 use super::{FontFace, RenderingParams};
 
@@ -21,10 +20,14 @@ impl BitmapRenderTarget {
         BitmapRenderTarget { native }
     }
 
+    pub fn as_ptr(&self) -> &IDWriteBitmapRenderTarget {
+        &self.native
+    }
+
     // A dip is 1/96th of an inch, so this value is the number of pixels per inch divided by 96.
     pub fn set_pixels_per_dip(&self, ppd: f32) {
         unsafe {
-            let _ = self.native.SetPixelsPerDip(ppd);
+            self.native.SetPixelsPerDip(ppd);
         }
     }
 
@@ -55,29 +58,27 @@ impl BitmapRenderTarget {
             let color = COLORREF((r as u32) | ((g as u32) << 8) | ((b as u32) << 16));
 
             let glyph_run = DWRITE_GLYPH_RUN {
-                fontFace: ManuallyDrop::new(Some(font_face.native.clone())),
+                fontFace: ManuallyDrop::new(Some(font_face.as_ptr().clone())),
                 fontEmSize: em_size,
                 glyphCount: glyph_indices.len() as u32,
                 glyphIndices: glyph_indices.as_ptr(),
                 glyphAdvances: glyph_advances.as_ptr(),
                 glyphOffsets: glyph_offsets.as_ptr(),
-                isSideways: FALSE,
+                isSideways: false.into(),
                 bidiLevel: 0,
             };
 
-            let mut rect: RECT = zeroed();
-            self.native
-                .DrawGlyphRun(
-                    baseline_origin_x,
-                    baseline_origin_y,
-                    measuring_mode,
-                    &glyph_run,
-                    &rendering_params.native,
-                    color,
-                    Some(&mut rect),
-                )
-                .unwrap();
-            rect
+            let mut rect = MaybeUninit::uninit();
+            self.native.DrawGlyphRun(
+                baseline_origin_x,
+                baseline_origin_y,
+                measuring_mode,
+                &glyph_run,
+                rendering_params.as_ptr(),
+                COLORREF((r as u32) | ((g as u32) << 8) | ((b as u32) << 16)),
+                Some(rect.as_mut_ptr()),
+            ).unwrap();
+            rect.assume_init()
         }
     }
 
@@ -90,12 +91,13 @@ impl BitmapRenderTarget {
         // Now grossness to pull out the pixels
         unsafe {
             let memory_dc = self.get_memory_dc();
-            let mut bitmap: BITMAP = zeroed();
+            let mut bitmap = MaybeUninit::<BITMAP>::uninit();
             let ret = GetObjectW(
                 GetCurrentObject(HDC(memory_dc.0), OBJ_BITMAP),
                 size_of::<BITMAP>() as i32,
-                Some(&mut bitmap as *mut _ as *mut _),
+                Some(bitmap.as_mut_ptr() as *mut _),
             );
+            let bitmap = bitmap.assume_init();
             assert!(ret == size_of::<BITMAP>() as i32);
             assert!(bitmap.bmBitsPixel == 32);
 

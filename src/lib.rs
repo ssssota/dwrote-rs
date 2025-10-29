@@ -17,7 +17,12 @@ extern crate windows;
 
 include!("types.rs");
 
+use windows::Win32::Graphics::DirectWrite::{DWriteCreateFactory, IDWriteFactory, DWRITE_FACTORY_TYPE_SHARED, IDWriteRenderingParams};
+
+pub use winapi::um::winnt::HRESULT;
+
 mod helpers;
+use helpers::ToWide;
 
 #[cfg(test)]
 mod test;
@@ -39,6 +44,11 @@ pub use windows::Win32::Graphics::DirectWrite::{
     DWRITE_RENDERING_MODE_NATURAL, DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC,
     DWRITE_RENDERING_MODE_OUTLINE, DWRITE_TEXTURE_TYPE,
 };
+pub use winapi::um::dwrite_1::DWRITE_FONT_METRICS1 as FontMetrics1;
+pub use winapi::um::dwrite_3::DWRITE_FONT_AXIS_VALUE;
+
+#[macro_use]
+mod com_helpers;
 
 mod bitmap_render_target;
 pub use bitmap_render_target::BitmapRenderTarget;
@@ -82,4 +92,31 @@ pub use text_analysis_source_impl::{
 
 // This is an internal implementation of `GeometrySink` so that we can
 // expose `IDWriteGeometrySink` in an idiomatic way.
-// mod geometry_sink_impl;
+mod geometry_sink_impl;
+
+lazy_static! {
+    static ref DWRITE_FACTORY: IDWriteFactory = unsafe {
+        DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap()
+    };
+    static ref DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR: IDWriteRenderingParams = {
+        unsafe {
+            DWriteFactory().CreateRenderingParams().unwrap()
+        }
+    };
+} // end lazy static
+
+// FIXME vlad would be nice to return, say, FactoryPtr<IDWriteFactory>
+// that has a DerefMut impl, so that we can write
+// DWriteFactory().SomeOperation() as opposed to
+// (*DWriteFactory()).SomeOperation()
+#[allow(non_snake_case)]
+#[inline]
+fn DWriteFactory() -> &'static IDWriteFactory {
+    &DWRITE_FACTORY
+}
+
+#[allow(non_snake_case)]
+#[inline]
+fn DefaultDWriteRenderParams() -> &'static IDWriteRenderingParams {
+    &DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR
+}

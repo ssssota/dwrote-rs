@@ -4,8 +4,9 @@
 
 /* this is include!()'d in lib.rs */
 use std::mem;
-use std::convert::TryInto;
-use windows::Win32::Graphics::DirectWrite::{DWRITE_FONT_STYLE, DWRITE_FONT_WEIGHT, DWRITE_FONT_STRETCH};
+use windows::Win32::Graphics::DirectWrite::{
+    DWRITE_FONT_STRETCH, DWRITE_FONT_STYLE, DWRITE_FONT_WEIGHT
+};
 
 // mirrors DWRITE_FONT_WEIGHT
 #[cfg_attr(feature = "serde_serialization", derive(Deserialize, Serialize))]
@@ -70,6 +71,19 @@ impl Into<DWRITE_FONT_WEIGHT> for FontWeight {
     }
 }
 
+impl From<FontWeight> for DWRITE_FONT_WEIGHT {
+    #[inline]
+    fn from(value: FontWeight) -> Self {
+        DWRITE_FONT_WEIGHT(value.to_u32() as i32)
+    }
+}
+impl From<DWRITE_FONT_WEIGHT> for FontWeight {
+    #[inline]
+    fn from(value: DWRITE_FONT_WEIGHT) -> FontWeight {
+        FontWeight::from_u32(value.0 as u32)
+    }
+}
+
 // mirrors DWRITE_FONT_STRETCH
 #[repr(u32)]
 #[cfg_attr(feature = "serde_serialization", derive(Deserialize, Serialize))]
@@ -102,6 +116,19 @@ impl Into<DWRITE_FONT_STRETCH> for FontStretch {
     }
 }
 
+impl From<FontStretch> for DWRITE_FONT_STRETCH {
+    #[inline]
+    fn from(value: FontStretch) -> Self {
+        DWRITE_FONT_STRETCH(value.to_u32() as i32)
+    }
+}
+impl From<DWRITE_FONT_STRETCH> for FontStretch {
+    #[inline]
+    fn from(value: DWRITE_FONT_STRETCH) -> FontStretch {
+        FontStretch::from_u32(value.0 as u32)
+    }
+}
+
 // mirrors DWRITE_FONT_STYLE
 #[repr(u32)]
 #[cfg_attr(feature = "serde_serialization", derive(Deserialize, Serialize))]
@@ -127,34 +154,46 @@ impl Into<DWRITE_FONT_STYLE> for FontStyle {
     }
 }
 
+impl From<FontStyle> for DWRITE_FONT_STYLE {
+    #[inline]
+    fn from(value: FontStyle) -> Self {
+        DWRITE_FONT_STYLE(value.to_u32() as i32)
+    }
+}
+impl From<DWRITE_FONT_STYLE> for FontStyle {
+    #[inline]
+    fn from(value: DWRITE_FONT_STYLE) -> FontStyle {
+        FontStyle::from_u32(value.0 as u32)
+    }
+}
+
 // mirrors DWRITE_FONT_SIMULATIONS
 #[repr(u32)]
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum FontSimulations {
-    None = 0b00,
-    Bold = 0b01,
-    Oblique = 0b10,
-    BoldOblique = 0b11,
+    None = windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS_NONE.0 as u32,
+    Bold = windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS_BOLD.0 as u32,
+    Oblique = windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS_OBLIQUE.0 as u32,
+    BoldOblique = (windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS_BOLD.0 |
+        windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS_OBLIQUE.0) as u32,
 }
-impl From<DWRITE_FONT_SIMULATIONS> for FontSimulations {
-    fn from(v: DWRITE_FONT_SIMULATIONS) -> FontSimulations {
-        match v.0 {
-            0b00 => FontSimulations::None,
-            0b01 => FontSimulations::Bold,
-            0b10 => FontSimulations::Oblique,
-            0b11 => FontSimulations::BoldOblique,
-            _ => panic!("Invalid DWRITE_FONT_SIMULATIONS value")
+
+impl From<windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS> for FontSimulations {
+    #[inline]
+    fn from(value: windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS) -> Self {
+        match value.0 {
+            x if x == FontSimulations::None as i32 => FontSimulations::None,
+            x if x == FontSimulations::Bold as i32 => FontSimulations::Bold,
+            x if x == FontSimulations::Oblique as i32 => FontSimulations::Oblique,
+            x if x == FontSimulations::BoldOblique as i32 => FontSimulations::BoldOblique,
+            _ => FontSimulations::None, // default case
         }
     }
 }
-impl Into<DWRITE_FONT_SIMULATIONS> for FontSimulations {
-    fn into(self) -> DWRITE_FONT_SIMULATIONS {
-        match self {
-            FontSimulations::None => DWRITE_FONT_SIMULATIONS_NONE,
-            FontSimulations::Bold => DWRITE_FONT_SIMULATIONS_BOLD,
-            FontSimulations::Oblique => DWRITE_FONT_SIMULATIONS_OBLIQUE,
-            FontSimulations::BoldOblique => DWRITE_FONT_SIMULATIONS_BOLD | DWRITE_FONT_SIMULATIONS_OBLIQUE,
-        }
+impl From<FontSimulations> for windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS {
+    #[inline]
+    fn from(value: FontSimulations) -> Self {
+        windows::Win32::Graphics::DirectWrite::DWRITE_FONT_SIMULATIONS(value as i32)
     }
 }
 

@@ -2,15 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use windows::core::Interface;
-use windows::Win32::Foundation::{FALSE, TRUE};
-use windows::Win32::Graphics::DirectWrite::{
-    IDWriteFont, IDWriteFont1, DWRITE_INFORMATIONAL_STRING_ID,
-};
+use std::mem::MaybeUninit;
+use windows::Win32::Foundation::TRUE;
+
+use windows::Win32::Graphics::DirectWrite::{IDWriteFont, IDWriteFontFace, IDWriteFont1, DWRITE_FONT_METRICS, DWRITE_FONT_METRICS1};
+use windows_core::Interface;
 
 use super::*;
 use helpers::*;
 
+#[derive(Clone)]
 pub struct Font {
     native: IDWriteFont,
 }
@@ -18,6 +19,11 @@ pub struct Font {
 impl Font {
     pub fn take(native: IDWriteFont) -> Font {
         Font { native }
+    }
+
+    pub unsafe fn as_ptr(&self) -> *mut IDWriteFont {
+        // (*self.native.get()).as_raw()
+        unimplemented!()
     }
 
     pub fn to_descriptor(&self) -> FontDescriptor {
@@ -30,129 +36,136 @@ impl Font {
     }
 
     pub fn stretch(&self) -> FontStretch {
-        unsafe { mem::transmute::<DWRITE_FONT_STRETCH, FontStretch>(self.native.GetStretch()) }
+        unsafe { self.native.GetStretch().into() }
     }
 
     pub fn style(&self) -> FontStyle {
-        unsafe { mem::transmute::<DWRITE_FONT_STYLE, FontStyle>(self.native.GetStyle()) }
+        unsafe { self.native.GetStyle().into() }
     }
 
     pub fn weight(&self) -> FontWeight {
-        FontWeight::from(unsafe { self.native.GetWeight() })
+        unsafe { self.native.GetWeight().into() }
     }
 
     pub fn is_monospace(&self) -> Option<bool> {
         unsafe {
-            self.native
-                .cast::<IDWriteFont1>()
-                .ok()
-                .map(|font_1| font_1.IsMonospacedFont() == TRUE)
+            let font1 = self.native.cast::<IDWriteFont1>().ok();
+            font1.map(|font| font.IsMonospacedFont() == TRUE)
         }
     }
 
     pub fn simulations(&self) -> FontSimulations {
-        FontSimulations::from(unsafe { self.native.GetSimulations() })
+        unsafe { self.native.GetSimulations().into() }
     }
 
     pub fn family_name(&self) -> String {
-        unsafe {
-            let family = self.native.GetFontFamily().unwrap();
-            FontFamily::take(family).name()
-        }
+        let family = unsafe { self.native.GetFontFamily().unwrap() };
+        let family = FontFamily::take(family);
+        family.family_name().unwrap()
     }
 
     pub fn face_name(&self) -> String {
-        unsafe {
-            let names = self.native.GetFaceNames().unwrap();
-            get_locale_string(&names)
-        }
+        // unsafe {
+        //     let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
+        //     let hr = (*self.native.get()).GetFaceNames(&mut names);
+        //     assert!(hr == 0);
+
+        //     get_locale_string(&mut ComPtr::from_raw(names))
+        // }
+        let faces = unsafe { self.native.GetFaceNames().unwrap() };
+        get_locale_string(faces)
     }
 
     pub fn informational_string(&self, id: InformationalStringId) -> Option<String> {
-        unsafe {
-            let mut names = None;
-            let mut exists = FALSE;
-            self.native
-                .GetInformationalStrings(id.into(), &mut names, &mut exists)
-                .ok()?;
-            if exists == TRUE {
-                Some(names.map(|names| get_locale_string(&names))?)
-            } else {
-                None
-            }
-        }
+        // unsafe {
+        //     let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
+        //     let mut exists = FALSE;
+        //     let id = id as DWRITE_INFORMATIONAL_STRING_ID;
+        //     let hr = (*self.native.get()).GetInformationalStrings(id, &mut names, &mut exists);
+        //     assert!(hr == S_OK);
+        //     if exists == TRUE {
+        //         Some(get_locale_string(&mut ComPtr::from_raw(names)))
+        //     } else {
+        //         None
+        //     }
+        // }
+        // unsafe {
+        //     let names = self.native.GetInformationalStrings(informationalstringid, informationalstrings, exists).ok()?;
+        // }
+        unimplemented!()
     }
 
     pub fn create_font_face(&self) -> FontFace {
         // FIXME create_font_face should cache the FontFace and return it,
         // there's a 1:1 relationship
         unsafe {
+            // let mut face: *mut IDWriteFontFace = ptr::null_mut();
+            // let hr = (*self.native.get()).CreateFontFace(&mut face);
+            // assert!(hr == 0);
+            // FontFace::take(ComPtr::from_raw(face))
             let face = self.native.CreateFontFace().unwrap();
             FontFace::take(face)
         }
     }
 
     pub fn metrics(&self) -> FontMetrics {
-        unsafe {
-            let font_1: Option<IDWriteFont1> = self.native.cast().ok();
-            match font_1 {
-                None => {
-                    let mut metrics = std::mem::zeroed();
-                    self.native.GetMetrics(&mut metrics);
-                    FontMetrics::Metrics0(metrics)
-                }
-                Some(font_1) => {
-                    let mut metrics_1 = std::mem::zeroed();
-                    font_1.GetMetrics(&mut metrics_1);
-                    FontMetrics::Metrics1(metrics_1)
-                }
+        // unsafe {
+        //     let font_1: Option<ComPtr<IDWriteFont1>> = (*self.native.get()).cast().ok();
+        //     match font_1 {
+        //         None => {
+        //             let mut metrics = mem::zeroed();
+        //             (*self.native.get()).GetMetrics(&mut metrics);
+        //             FontMetrics::Metrics0(metrics)
+        //         }
+        //         Some(font_1) => {
+        //             let mut metrics_1 = mem::zeroed();
+        //             font_1.GetMetrics(&mut metrics_1);
+        //             FontMetrics::Metrics1(metrics_1)
+        //         }
+        //     }
+        // }
+        let font1 = self.native.cast::<IDWriteFont1>().ok();
+        match font1 {
+            None => unsafe {
+                let mut metrics = MaybeUninit::uninit();
+                self.native.GetMetrics(metrics.as_mut_ptr());
+                FontMetrics::Metrics0(metrics.assume_init())
+            }
+            Some(font1) => unsafe {
+                let mut metrics1 = MaybeUninit::uninit();
+                font1.GetMetrics(metrics1.as_mut_ptr());
+                FontMetrics::Metrics1(metrics1.assume_init())
             }
         }
     }
 }
 
-impl Clone for Font {
-    fn clone(&self) -> Font {
-        Font {
-            native: self.native.clone(),
+macro_rules! define_informational_string_id {
+    ( $($name:ident = $value:ident),* $(,)? ) => {
+        #[repr(u32)]
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        pub enum InformationalStringId {
+            $( $name = ::windows::Win32::Graphics::DirectWrite::$value.0 as u32, )*
         }
-    }
-}
 
-macro_rules! make_const_informational_string {
-    ($($name:ident),*) => {
-        $(
-            const $name: i32 = windows::Win32::Graphics::DirectWrite::$name.0;
-        )*
+        impl From<InformationalStringId> for windows::Win32::Graphics::DirectWrite::DWRITE_INFORMATIONAL_STRING_ID {
+            fn from(id: InformationalStringId) -> Self {
+                match id {
+                    $( InformationalStringId::$name => windows::Win32::Graphics::DirectWrite::$value, )*
+                }
+            }
+        }
+        impl From<windows::Win32::Graphics::DirectWrite::DWRITE_INFORMATIONAL_STRING_ID> for InformationalStringId {
+            fn from(id: windows::Win32::Graphics::DirectWrite::DWRITE_INFORMATIONAL_STRING_ID) -> Self {
+                match id {
+                    $( windows::Win32::Graphics::DirectWrite::$value => InformationalStringId::$name, )*
+                    _ => panic!("Unknown InformationalStringId value"),
+                }
+            }
+        }
     };
 }
-make_const_informational_string!(
-    DWRITE_INFORMATIONAL_STRING_FULL_NAME,
-    DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_NAME,
-    DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_CID_NAME,
-    DWRITE_INFORMATIONAL_STRING_COPYRIGHT_NOTICE,
-    DWRITE_INFORMATIONAL_STRING_DESCRIPTION,
-    DWRITE_INFORMATIONAL_STRING_DESIGNER,
-    DWRITE_INFORMATIONAL_STRING_DESIGNER_URL,
-    DWRITE_INFORMATIONAL_STRING_DESIGN_SCRIPT_LANGUAGE_TAG,
-    DWRITE_INFORMATIONAL_STRING_FONT_VENDOR_URL,
-    DWRITE_INFORMATIONAL_STRING_LICENSE_DESCRIPTION,
-    DWRITE_INFORMATIONAL_STRING_LICENSE_INFO_URL,
-    DWRITE_INFORMATIONAL_STRING_MANUFACTURER,
-    DWRITE_INFORMATIONAL_STRING_PREFERRED_FAMILY_NAMES,
-    DWRITE_INFORMATIONAL_STRING_PREFERRED_SUBFAMILY_NAMES,
-    DWRITE_INFORMATIONAL_STRING_SAMPLE_TEXT,
-    DWRITE_INFORMATIONAL_STRING_SUPPORTED_SCRIPT_LANGUAGE_TAG,
-    DWRITE_INFORMATIONAL_STRING_TRADEMARK,
-    DWRITE_INFORMATIONAL_STRING_VERSION_STRINGS,
-    DWRITE_INFORMATIONAL_STRING_WIN32_FAMILY_NAMES,
-    DWRITE_INFORMATIONAL_STRING_WIN32_SUBFAMILY_NAMES,
-    DWRITE_INFORMATIONAL_STRING_WWS_FAMILY_NAME
-);
-
-#[repr(i32)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum InformationalStringId {
+define_informational_string_id! {
     FullName = DWRITE_INFORMATIONAL_STRING_FULL_NAME,
     PostscriptName = DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_NAME,
     PostscriptCidName = DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_CID_NAME,
@@ -175,54 +188,6 @@ pub enum InformationalStringId {
     Win32SubfamilyNames = DWRITE_INFORMATIONAL_STRING_WIN32_SUBFAMILY_NAMES,
     WwsFamilyName = DWRITE_INFORMATIONAL_STRING_WWS_FAMILY_NAME,
 }
-impl From<DWRITE_INFORMATIONAL_STRING_ID> for InformationalStringId {
-    fn from(v: DWRITE_INFORMATIONAL_STRING_ID) -> Self {
-        match v.0 {
-            DWRITE_INFORMATIONAL_STRING_FULL_NAME => Self::FullName,
-            DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_NAME => Self::PostscriptName,
-            DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_CID_NAME => Self::PostscriptCidName,
-            DWRITE_INFORMATIONAL_STRING_COPYRIGHT_NOTICE => Self::CopyrightNotice,
-            DWRITE_INFORMATIONAL_STRING_DESCRIPTION => Self::Description,
-            DWRITE_INFORMATIONAL_STRING_DESIGNER => Self::Designer,
-            DWRITE_INFORMATIONAL_STRING_DESIGNER_URL => Self::DesignerUrl,
-            DWRITE_INFORMATIONAL_STRING_DESIGN_SCRIPT_LANGUAGE_TAG => Self::DesignScriptLanguageTag,
-            DWRITE_INFORMATIONAL_STRING_FONT_VENDOR_URL => Self::VendorUrl,
-            DWRITE_INFORMATIONAL_STRING_LICENSE_DESCRIPTION => Self::LicenseDescription,
-            DWRITE_INFORMATIONAL_STRING_LICENSE_INFO_URL => Self::LicenseInfoUrl,
-            DWRITE_INFORMATIONAL_STRING_MANUFACTURER => Self::Manufacturer,
-            DWRITE_INFORMATIONAL_STRING_PREFERRED_FAMILY_NAMES => Self::PreferredFamilyNames,
-            DWRITE_INFORMATIONAL_STRING_PREFERRED_SUBFAMILY_NAMES => Self::PreferredSubfamilyNames,
-            DWRITE_INFORMATIONAL_STRING_SAMPLE_TEXT => Self::SampleText,
-            DWRITE_INFORMATIONAL_STRING_SUPPORTED_SCRIPT_LANGUAGE_TAG => {
-                Self::SupportedScriptLanguageTag
-            }
-            DWRITE_INFORMATIONAL_STRING_TRADEMARK => Self::Trademark,
-            DWRITE_INFORMATIONAL_STRING_VERSION_STRINGS => Self::Version,
-            DWRITE_INFORMATIONAL_STRING_WIN32_FAMILY_NAMES => Self::Win32FamilyNames,
-            DWRITE_INFORMATIONAL_STRING_WIN32_SUBFAMILY_NAMES => Self::Win32SubfamilyNames,
-            DWRITE_INFORMATIONAL_STRING_WWS_FAMILY_NAME => Self::WwsFamilyName,
-            _ => panic!("Unknown DWRITE_INFORMATIONAL_STRING_ID"),
-        }
-    }
-}
-impl Into<i32> for InformationalStringId {
-    fn into(self) -> i32 {
-        unsafe { mem::transmute::<InformationalStringId, i32>(self) }
-    }
-}
-impl Into<DWRITE_INFORMATIONAL_STRING_ID> for InformationalStringId {
-    #[inline]
-    fn into(self) -> DWRITE_INFORMATIONAL_STRING_ID {
-        DWRITE_INFORMATIONAL_STRING_ID(self.into())
-    }
-}
-impl Into<u32> for InformationalStringId {
-    #[inline]
-    fn into(self) -> u32 {
-        Into::<i32>::into(self) as u32
-    }
-}
-
 /// A wrapper around the `DWRITE_FONT_METRICS` and `DWRITE_FONT_METRICS1` types.
 pub enum FontMetrics {
     /// Windows 7.
