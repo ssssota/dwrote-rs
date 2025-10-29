@@ -121,7 +121,7 @@ fn test_glyph_image() {
 
     let design_units_per_em = match face.metrics() {
         FontMetrics::Metrics0(ref metrics) => metrics.designUnitsPerEm,
-        FontMetrics::Metrics1(ref metrics) => metrics.designUnitsPerEm,
+        FontMetrics::Metrics1(ref metrics) => metrics.Base.designUnitsPerEm,
     };
     let design_units_per_pixel = design_units_per_em as f32 / 16.;
 

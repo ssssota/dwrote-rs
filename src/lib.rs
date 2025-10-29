@@ -17,23 +17,12 @@ extern crate winapi;
 
 include!("types.rs");
 
-use std::ffi::CString;
-use std::ptr;
-use winapi::shared::guiddef::REFIID;
-use winapi::shared::winerror::S_OK;
-use winapi::um::dwrite::IDWriteFactory;
-use winapi::um::dwrite::IDWriteRenderingParams;
-use winapi::um::dwrite::DWRITE_FACTORY_TYPE;
-use winapi::um::dwrite::DWRITE_FACTORY_TYPE_SHARED;
-use winapi::um::unknwnbase::IUnknown;
-use winapi::um::winnt::LPCSTR;
-use winapi::Interface;
+use windows::Win32::Graphics::DirectWrite::{DWriteCreateFactory, IDWriteFactory, DWRITE_FACTORY_TYPE_SHARED, IDWriteRenderingParams};
 
 pub use winapi::um::winnt::HRESULT;
 
 mod helpers;
 use helpers::ToWide;
-use std::os::raw::c_void;
 
 #[cfg(test)]
 mod test;
@@ -66,7 +55,6 @@ pub use winapi::um::dwrite::{
 };
 pub use winapi::um::dwrite_1::DWRITE_FONT_METRICS1 as FontMetrics1;
 pub use winapi::um::dwrite_3::DWRITE_FONT_AXIS_VALUE;
-use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryW};
 
 #[macro_use]
 mod com_helpers;
@@ -116,38 +104,12 @@ pub use text_analysis_source_impl::{
 mod geometry_sink_impl;
 
 lazy_static! {
-    static ref DWRITE_FACTORY_RAW_PTR: usize = {
-        unsafe {
-            type DWriteCreateFactoryType =
-                extern "system" fn(DWRITE_FACTORY_TYPE, REFIID, *mut *mut IUnknown) -> HRESULT;
-
-            let dwrite_dll = LoadLibraryW("dwrite.dll".to_wide_null().as_ptr());
-            assert!(!dwrite_dll.is_null());
-            let create_factory_name = CString::new("DWriteCreateFactory").unwrap();
-            let dwrite_create_factory_ptr =
-                GetProcAddress(dwrite_dll, create_factory_name.as_ptr() as LPCSTR);
-            assert!(!dwrite_create_factory_ptr.is_null());
-
-            let dwrite_create_factory = mem::transmute::<*const c_void, DWriteCreateFactoryType>(
-                dwrite_create_factory_ptr as *const _,
-            );
-
-            let mut factory: *mut IDWriteFactory = ptr::null_mut();
-            let hr = dwrite_create_factory(
-                DWRITE_FACTORY_TYPE_SHARED,
-                &IDWriteFactory::uuidof(),
-                &mut factory as *mut *mut IDWriteFactory as *mut *mut IUnknown,
-            );
-            assert!(hr == S_OK);
-            factory as usize
-        }
+    static ref DWRITE_FACTORY: IDWriteFactory = unsafe {
+        DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap()
     };
-    static ref DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR: usize = {
+    static ref DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR: IDWriteRenderingParams = {
         unsafe {
-            let mut default_rendering_params: *mut IDWriteRenderingParams = ptr::null_mut();
-            let hr = (*DWriteFactory()).CreateRenderingParams(&mut default_rendering_params);
-            assert!(hr == S_OK);
-            default_rendering_params as usize
+            DWriteFactory().CreateRenderingParams().unwrap()
         }
     };
 } // end lazy static
@@ -157,11 +119,13 @@ lazy_static! {
 // DWriteFactory().SomeOperation() as opposed to
 // (*DWriteFactory()).SomeOperation()
 #[allow(non_snake_case)]
-fn DWriteFactory() -> *mut IDWriteFactory {
-    (*DWRITE_FACTORY_RAW_PTR) as *mut IDWriteFactory
+#[inline]
+fn DWriteFactory() -> &'static IDWriteFactory {
+    &DWRITE_FACTORY
 }
 
 #[allow(non_snake_case)]
-fn DefaultDWriteRenderParams() -> *mut IDWriteRenderingParams {
-    (*DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR) as *mut IDWriteRenderingParams
+#[inline]
+fn DefaultDWriteRenderParams() -> &'static IDWriteRenderingParams {
+    &DEFAULT_DWRITE_RENDERING_PARAMS_RAW_PTR
 }

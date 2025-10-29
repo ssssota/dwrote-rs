@@ -4,15 +4,15 @@
 
 use std::borrow::Cow;
 use std::marker::PhantomData;
-use winapi::ctypes::wchar_t;
-use winapi::um::dwrite::IDWriteTextAnalysisSource;
-use wio::com::ComPtr;
+
+use libc::wchar_t;
+use windows::Win32::Graphics::DirectWrite::IDWriteTextAnalysisSource;
 
 use super::*;
 use crate::com_helpers::Com;
 
 pub struct TextAnalysisSource<'a> {
-    native: ComPtr<IDWriteTextAnalysisSource>,
+    native: IDWriteTextAnalysisSource,
     phantom: PhantomData<CustomTextAnalysisSourceImpl<'a>>,
 }
 
@@ -27,9 +27,7 @@ impl<'a> TextAnalysisSource<'a> {
         text: Cow<'a, [wchar_t]>,
     ) -> TextAnalysisSource<'a> {
         let native = unsafe {
-            ComPtr::from_raw(
-                CustomTextAnalysisSourceImpl::from_text_native(inner, text).into_interface(),
-            )
+            CustomTextAnalysisSourceImpl::from_text_native(inner, text).into_interface(),
         };
         TextAnalysisSource {
             native,
@@ -48,14 +46,12 @@ impl<'a> TextAnalysisSource<'a> {
         number_subst: NumberSubstitution,
     ) -> TextAnalysisSource<'a> {
         let native = unsafe {
-            ComPtr::from_raw(
-                CustomTextAnalysisSourceImpl::from_text_and_number_subst_native(
-                    inner,
-                    text,
-                    number_subst,
-                )
-                .into_interface(),
+            CustomTextAnalysisSourceImpl::from_text_and_number_subst_native(
+                inner,
+                text,
+                number_subst,
             )
+            .into_interface()
         };
         TextAnalysisSource {
             native,
@@ -63,7 +59,7 @@ impl<'a> TextAnalysisSource<'a> {
         }
     }
 
-    pub fn as_ptr(&self) -> *mut IDWriteTextAnalysisSource {
-        self.native.as_raw()
+    pub fn as_ptr(&self) -> &IDWriteTextAnalysisSource {
+        &self.native
     }
 }

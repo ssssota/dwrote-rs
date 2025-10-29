@@ -19,14 +19,14 @@ use winapi::shared::guiddef::REFIID;
 use winapi::shared::minwindef::{FALSE, TRUE, ULONG};
 use winapi::shared::ntdef::LOCALE_NAME_MAX_LENGTH;
 use winapi::shared::winerror::{E_INVALIDARG, S_OK};
-use winapi::um::dwrite::IDWriteNumberSubstitution;
 use winapi::um::dwrite::IDWriteTextAnalysisSource;
 use winapi::um::dwrite::IDWriteTextAnalysisSourceVtbl;
-use winapi::um::dwrite::DWRITE_NUMBER_SUBSTITUTION_METHOD;
 use winapi::um::dwrite::DWRITE_READING_DIRECTION;
 use winapi::um::unknwnbase::{IUnknown, IUnknownVtbl};
 use winapi::um::winnt::HRESULT;
-use wio::com::ComPtr;
+use windows_core::PCWSTR;
+
+use windows::Win32::Graphics::DirectWrite::{DWRITE_NUMBER_SUBSTITUTION_METHOD, IDWriteNumberSubstitution};
 
 use super::DWriteFactory;
 use crate::com_helpers::Com;
@@ -56,7 +56,7 @@ pub struct CustomTextAnalysisSourceImpl<'a> {
 
 /// A wrapped version of an `IDWriteNumberSubstitution` object.
 pub struct NumberSubstitution {
-    native: ComPtr<IDWriteNumberSubstitution>,
+    native: IDWriteNumberSubstitution,
 }
 
 // TODO: implement Clone, for convenience and efficiency?
@@ -228,17 +228,12 @@ impl NumberSubstitution {
         ignore_user_overrides: bool,
     ) -> NumberSubstitution {
         unsafe {
-            let mut native: *mut IDWriteNumberSubstitution = ptr::null_mut();
-            let hr = (*DWriteFactory()).CreateNumberSubstitution(
+            let native = DWriteFactory().CreateNumberSubstitution(
                 subst_method,
-                locale.to_wide_null().as_ptr(),
-                if ignore_user_overrides { TRUE } else { FALSE },
-                &mut native,
-            );
-            assert_eq!(hr, 0, "error creating number substitution");
-            NumberSubstitution {
-                native: ComPtr::from_raw(native),
-            }
+                PCWSTR(locale.to_wide_null().as_ptr()),
+                ignore_user_overrides,
+            ).expect("error creating number substitution");
+            NumberSubstitution { native }
         }
     }
 }
