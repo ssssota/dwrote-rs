@@ -10,6 +10,7 @@ use std::ptr;
 use std::slice;
 use std::sync::Arc;
 
+use windows::Win32::Foundation::FALSE;
 use windows_core::{BOOL, HRESULT, PCWSTR, Interface};
 use windows::Win32::Graphics::DirectWrite::{IDWriteFontFile, IDWriteFontFileStream, DWRITE_FONT_FACE_TYPE, DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS, IDWriteFontFileLoader, IDWriteLocalFontFileLoader};
 
@@ -85,7 +86,7 @@ impl FontFile {
         let mut face_type = DWRITE_FONT_FACE_TYPE_UNKNOWN;
         let mut num_faces = 0;
         unsafe {
-            let mut supported: BOOL = false.into();
+            let mut supported = FALSE;
             let mut _file_type = DWRITE_FONT_FILE_TYPE_UNKNOWN;
 
             let result = self.native.Analyze(

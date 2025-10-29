@@ -5,7 +5,7 @@
 use std::mem::{ManuallyDrop, MaybeUninit, size_of};
 use std::slice;
 
-use windows::Win32::Foundation::{COLORREF, RECT};
+use windows::Win32::Foundation::{COLORREF, FALSE, RECT};
 use windows::Win32::Graphics::Gdi::{BITMAP, GetCurrentObject, GetObjectW, HDC, OBJ_BITMAP};
 use windows::Win32::Graphics::DirectWrite::{IDWriteBitmapRenderTarget, DWRITE_GLYPH_RUN, DWRITE_MEASURING_MODE, DWRITE_GLYPH_OFFSET};
 
@@ -64,7 +64,7 @@ impl BitmapRenderTarget {
                 glyphIndices: glyph_indices.as_ptr(),
                 glyphAdvances: glyph_advances.as_ptr(),
                 glyphOffsets: glyph_offsets.as_ptr(),
-                isSideways: false.into(),
+                isSideways: FALSE,
                 bidiLevel: 0,
             };
 
