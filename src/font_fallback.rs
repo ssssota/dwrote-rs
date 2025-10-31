@@ -29,7 +29,6 @@ impl FontFallback {
         unsafe {
             let factory = DWriteFactory();
             let factory2 = factory.cast::<IDWriteFactory2>().ok();
-            std::mem::forget(factory);
             let factory2 = factory2?;
             let native = factory2.GetSystemFontFallback().ok()?;
             Some(FontFallback::take(native))
@@ -48,7 +47,7 @@ impl FontFallback {
     // TODO: map_characters (main function)
     pub fn map_characters(
         &self,
-        text_analysis_source: &TextAnalysisSource,
+        text_analysis_source: TextAnalysisSource,
         text_position: u32,
         text_length: u32,
         base_font: &FontCollection,
@@ -92,7 +91,7 @@ impl FontFallback {
             let mut mapped_font = MaybeUninit::uninit();
             let mut scale = 0.0;
             self.native.MapCharacters(
-                text_analysis_source,
+                text_analysis_source.as_ptr(),
                 text_position,
                 text_length,
                 base_font.as_ptr(),

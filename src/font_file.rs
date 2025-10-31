@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use windows::Win32::Foundation::FALSE;
 use windows_core::{HRESULT, PCWSTR, Interface};
-use windows::Win32::Graphics::DirectWrite::{IDWriteFontFile, IDWriteFontFileStream, DWRITE_FONT_FACE_TYPE, DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS, IDWriteFontFileLoader, IDWriteLocalFontFileLoader};
+use windows::Win32::Graphics::DirectWrite::{IDWriteFontFile, IDWriteFontFileStream, DWRITE_FONT_FACE_TYPE, DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS, IDWriteLocalFontFileLoader};
 
 use super::{FontFace, DWriteFactory};
 // use crate::font_file_loader_impl::DataFontHelper;
