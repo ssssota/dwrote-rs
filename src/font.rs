@@ -71,7 +71,7 @@ impl Font {
         //     get_locale_string(&mut ComPtr::from_raw(names))
         // }
         let faces = unsafe { self.native.GetFaceNames().unwrap() };
-        get_locale_string(faces)
+        get_locale_string(faces).unwrap()
     }
 
     pub fn informational_string(&self, id: InformationalStringId) -> Option<String> {
@@ -95,7 +95,7 @@ impl Font {
                 .GetInformationalStrings(id.into(), &mut strings, &mut exists)
                 .ok()?;
             if exists == TRUE {
-                strings.map(|s| get_locale_string(s))
+                strings.and_then(|s| get_locale_string(s).ok())
             } else {
                 None
             }

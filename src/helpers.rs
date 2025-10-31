@@ -5,11 +5,11 @@
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 
-use windows::Win32::Foundation::FALSE;
+use windows::Win32::Foundation::{E_FAIL, FALSE};
 use windows::Win32::Globalization::GetUserDefaultLocaleName;
 use windows::Win32::Graphics::DirectWrite::IDWriteLocalizedStrings;
 use windows::Win32::System::SystemServices::LOCALE_NAME_MAX_LENGTH;
-use windows_core::{BOOL, PCWSTR};
+use windows_core::PCWSTR;
 
 lazy_static! {
     static ref SYSTEM_LOCALE: Vec<u16> = {
@@ -23,10 +23,10 @@ lazy_static! {
     static ref EN_US_LOCALE: Vec<u16> = OsStr::new("en-us").to_wide_null();
 }
 
-pub fn get_locale_string(strings: IDWriteLocalizedStrings) -> String {
+pub fn get_locale_string(strings: IDWriteLocalizedStrings) -> windows_core::Result<String> {
     unsafe {
         let mut index: u32 = 0;
-        let mut exists: BOOL = FALSE;
+        let mut exists = FALSE;
         let mut res = strings.FindLocaleName(PCWSTR(SYSTEM_LOCALE.as_ptr()), &mut index, &mut exists);
         if res.is_err() || exists == FALSE {
             res = strings.FindLocaleName(PCWSTR(EN_US_LOCALE.as_ptr()), &mut index, &mut exists);
@@ -35,13 +35,13 @@ pub fn get_locale_string(strings: IDWriteLocalizedStrings) -> String {
                 index = 0;
             }
         }
-        let length = strings.GetStringLength(index).unwrap() as usize;
+        let length = strings.GetStringLength(index).map_err(|e| e.code())? as usize;
 
-        let mut name: Vec<u16> = Vec::with_capacity(length + 1);
-        strings.GetString(index, &mut name).unwrap();
+        let mut name = vec![0u16; length + 1];
+        strings.GetString(index, &mut name).map_err(|e| e.code())?;
         name.set_len(length);
 
-        String::from_utf16(&name).ok().unwrap()
+        String::from_utf16(&name).or(Err(E_FAIL.into()))
     }
 }
 

@@ -5,8 +5,10 @@
 use windows::Win32::Graphics::DirectWrite::IDWriteFontFamily;
 use windows_core::HRESULT;
 
+use super::helpers::get_locale_string;
 use super::*;
 
+#[derive(Debug, Clone)]
 pub struct FontFamily {
     native: IDWriteFontFamily,
 }
@@ -31,10 +33,7 @@ impl FontFamily {
     pub fn family_name(&self) -> Result<String, HRESULT> {
         unsafe {
             let family_names = self.native.GetFamilyNames().map_err(|e| e.code())?;
-            let name_len = family_names.GetStringLength(0).map_err(|e| e.code())?;
-            let mut name_buf: Vec<u16> = vec![0; name_len as usize];
-            family_names.GetString(0, &mut name_buf).map_err(|e| e.code())?;
-            String::from_utf16(&name_buf).map_err(|_| HRESULT::from_win32(0))
+            get_locale_string(family_names).map_err(|e| e.code())
         }
     }
 
