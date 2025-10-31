@@ -2,15 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+use std::ffi::c_void;
 use std::mem::{MaybeUninit, zeroed};
 use std::slice;
 use std::{error, fmt, ptr};
-use winapi::ctypes::c_void;
 use windows::Win32::Foundation::{FALSE, TRUE};
 
 use windows::Win32::Graphics::DirectWrite::{
     DWRITE_FONT_AXIS_ATTRIBUTES_NONE, DWRITE_FONT_AXIS_ATTRIBUTES_VARIABLE, DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_VALUE, DWRITE_FONT_FACE_TYPE_BITMAP, DWRITE_FONT_FACE_TYPE_CFF, DWRITE_FONT_FACE_TYPE_RAW_CFF, DWRITE_FONT_FACE_TYPE_TRUETYPE, DWRITE_FONT_FACE_TYPE_TRUETYPE_COLLECTION, DWRITE_FONT_FACE_TYPE_TYPE1, DWRITE_FONT_FACE_TYPE_VECTOR, DWRITE_FONT_SIMULATIONS, DWRITE_GLYPH_METRICS, DWRITE_GLYPH_OFFSET, DWRITE_MATRIX, DWRITE_MEASURING_MODE, DWRITE_RENDERING_MODE, DWRITE_RENDERING_MODE_DEFAULT, IDWriteFontFace, IDWriteFontFace1, IDWriteFontFace5, IDWriteFontFile, IDWriteRenderingParams};
-use windows_core::{BOOL, HRESULT, Interface};
+use windows_core::{HRESULT, Interface};
 use super::{DWriteFactory, FontFile, FontMetrics, DefaultDWriteRenderParams, FontSimulations};
 use crate::geometry_sink_impl::GeometrySinkImpl;
 use crate::outline_builder::OutlineBuilder;
@@ -248,7 +248,7 @@ impl FontFace {
         // let mut table_size: u32 = 0;
         // let mut table_context: *mut c_void = ptr::null_mut();
         // let mut exists: BOOL = FALSE;
-        unsafe {
+        // unsafe {
         //     let hr = (*self.native.get()).TryGetFontTable(
         //         opentype_table_tag,
         //         &mut table_data_ptr as *mut *const _ as *mut *const c_void,
@@ -269,6 +269,8 @@ impl FontFace {
         //     (*self.native.get()).ReleaseFontTable(table_context);
 
         //     Ok(Some(table_bytes))
+        // }
+        unsafe {
             let mut table_data_ptr: *const u8 = ptr::null_mut();
             let mut table_size: u32 = 0;
             let mut table_context: *mut c_void = ptr::null_mut();

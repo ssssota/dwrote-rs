@@ -2,8 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+use std::mem::MaybeUninit;
+
 use windows::Win32::Graphics::DirectWrite::{IDWriteFactory2, IDWriteFontFallback};
-use windows_core::Interface;
+use windows_core::{Interface, PCWSTR};
+
+use crate::helpers::ToWide;
 
 use super::*;
 
@@ -83,9 +87,29 @@ impl FontFallback {
             //     mapped_font,
             //     scale,
             // }
-            self.native.MapCharacters(analysissource, textposition, textlength, basefontcollection, basefamilyname, baseweight, basestyle, basestretch, mappedlength, mappedfont, scale);
 
-            unimplemented!()
+            let mut mapped_length = 0;
+            let mut mapped_font = MaybeUninit::uninit();
+            let mut scale = 0.0;
+            self.native.MapCharacters(
+                text_analysis_source,
+                text_position,
+                text_length,
+                base_font.as_ptr(),
+                PCWSTR(base_family.to_wide_null().as_ptr()),
+                base_weight.into(),
+                base_style.into(),
+                base_stretch.into(),
+                &mut mapped_length,
+                mapped_font.as_mut_ptr(),
+                &mut scale
+            ).unwrap();
+            let mapped_font = mapped_font.assume_init();
+            FallbackResult {
+                mapped_length: mapped_length as usize,
+                mapped_font: mapped_font.map(|f| Font::take(f)),
+                scale,
+            }
         }
     }
 }

@@ -11,7 +11,7 @@ use std::slice;
 use std::sync::Arc;
 
 use windows::Win32::Foundation::FALSE;
-use windows_core::{BOOL, HRESULT, PCWSTR, Interface};
+use windows_core::{HRESULT, PCWSTR, Interface};
 use windows::Win32::Graphics::DirectWrite::{IDWriteFontFile, IDWriteFontFileStream, DWRITE_FONT_FACE_TYPE, DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS, IDWriteFontFileLoader, IDWriteLocalFontFileLoader};
 
 use super::{FontFace, DWriteFactory};
@@ -122,7 +122,7 @@ impl FontFile {
         }
     }
 
-    pub(crate) unsafe fn as_com_ptr(&self) -> &IDWriteFontFile {
+    pub(crate) fn as_ptr(&self) -> &IDWriteFontFile {
         &self.native
     }
 
@@ -283,7 +283,7 @@ impl FontFile {
             // }
 
             let face = DWriteFactory()
-                .CreateFontFace(self.face_type, fontfiles, face_index, simulations)
+                .CreateFontFace(self.face_type, &[None], face_index, simulations)
                 .map_err(|e| e.code())?;
             Ok(FontFace::take(face))
         }

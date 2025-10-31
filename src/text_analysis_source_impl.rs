@@ -1,59 +1,43 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+// /* This Source Code Form is subject to the terms of the Mozilla Public
+//  * License, v. 2.0. If a copy of the MPL was not distributed with this
+//  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-//! A custom implementation of the "text analysis source" interface so that
-//! we can convey data to the `FontFallback::map_characters` method.
+// //! A custom implementation of the "text analysis source" interface so that
+// //! we can convey data to the `FontFallback::map_characters` method.
 
-#![allow(non_snake_case)]
+// #![allow(non_snake_case)]
 
-use std::borrow::Cow;
-use std::sync::atomic::AtomicUsize;
-use winapi::ctypes::wchar_t;
-use winapi::shared::basetsd::UINT32;
-use winapi::shared::guiddef::REFIID;
-use winapi::shared::minwindef::{FALSE, TRUE, ULONG};
-use winapi::shared::ntdef::LOCALE_NAME_MAX_LENGTH;
-use winapi::shared::winerror::{E_INVALIDARG, S_OK};
-use winapi::um::dwrite::IDWriteTextAnalysisSource;
-use winapi::um::dwrite::IDWriteTextAnalysisSourceVtbl;
-use winapi::um::dwrite::DWRITE_READING_DIRECTION;
-use winapi::um::unknwnbase::{IUnknown, IUnknownVtbl};
-use winapi::um::winnt::HRESULT;
-use windows_core::PCWSTR;
+// use std::borrow::Cow;
+// use std::sync::atomic::AtomicUsize;
+// use libc::wchar_t;
+// use windows_core::PCWSTR;
+// use windows::Win32::Graphics::DirectWrite::{DWRITE_NUMBER_SUBSTITUTION_METHOD, DWRITE_READING_DIRECTION, IDWriteNumberSubstitution, IDWriteTextAnalysisSource_Impl};
+// use windows::Win32::System::SystemServices::LOCALE_NAME_MAX_LENGTH;
 
-use windows::Win32::Graphics::DirectWrite::{DWRITE_NUMBER_SUBSTITUTION_METHOD, IDWriteNumberSubstitution};
+// use super::DWriteFactory;
+// use crate::helpers::ToWide;
 
-use super::DWriteFactory;
-use crate::com_helpers::Com;
-use crate::helpers::ToWide;
+// /// The Rust side of a custom text analysis source implementation.
+// pub trait TextAnalysisSourceMethods {
+//     /// Determine the locale for a range of text.
+//     ///
+//     /// Return locale and length of text (in utf-16 code units) for which the
+//     /// locale is valid.
+//     fn get_locale_name(&self, text_position: u32) -> (Cow<'_, str>, u32);
 
-/// The Rust side of a custom text analysis source implementation.
-pub trait TextAnalysisSourceMethods {
-    /// Determine the locale for a range of text.
-    ///
-    /// Return locale and length of text (in utf-16 code units) for which the
-    /// locale is valid.
-    fn get_locale_name(&self, text_position: u32) -> (Cow<'_, str>, u32);
+//     /// Get the text direction for the paragraph.
+//     fn get_paragraph_reading_direction(&self) -> DWRITE_READING_DIRECTION;
+// }
 
-    /// Get the text direction for the paragraph.
-    fn get_paragraph_reading_direction(&self) -> DWRITE_READING_DIRECTION;
-}
-
-#[repr(C)]
-pub struct CustomTextAnalysisSourceImpl<'a> {
-    // NB: This must be the first field.
-    _refcount: AtomicUsize,
-    inner: Box<dyn TextAnalysisSourceMethods + 'a>,
-    text: Cow<'a, [wchar_t]>,
-    number_subst: Option<NumberSubstitution>,
-    locale_buf: [wchar_t; LOCALE_NAME_MAX_LENGTH as usize],
-}
-
-/// A wrapped version of an `IDWriteNumberSubstitution` object.
-pub struct NumberSubstitution {
-    native: IDWriteNumberSubstitution,
-}
+// #[repr(C)]
+// pub struct CustomTextAnalysisSourceImpl<'a> {
+//     // NB: This must be the first field.
+//     _refcount: AtomicUsize,
+//     inner: Box<dyn TextAnalysisSourceMethods + 'a>,
+//     text: Cow<'a, [wchar_t]>,
+//     number_subst: Option<NumberSubstitution>,
+//     locale_buf: [wchar_t; LOCALE_NAME_MAX_LENGTH as usize],
+// }
 
 // TODO: implement Clone, for convenience and efficiency?
 
@@ -66,46 +50,46 @@ pub struct NumberSubstitution {
 //     GetTextBeforePosition: CustomTextAnalysisSourceImpl_GetTextBeforePosition,
 // };
 
-impl<'a> CustomTextAnalysisSourceImpl<'a> {
-    /// Create a new custom TextAnalysisSource for the given text and a trait
-    /// implementation.
-    ///
-    /// Note: this method has no NumberSubsitution specified. See
-    /// `from_text_and_number_subst_native` if you need number substitution.
-    pub fn from_text_native(
-        inner: Box<dyn TextAnalysisSourceMethods + 'a>,
-        text: Cow<'a, [wchar_t]>,
-    ) -> CustomTextAnalysisSourceImpl<'a> {
-        assert!(text.len() <= (u32::MAX as usize));
-        CustomTextAnalysisSourceImpl {
-            _refcount: AtomicUsize::new(1),
-            inner,
-            text,
-            number_subst: None,
-            locale_buf: [0u16; LOCALE_NAME_MAX_LENGTH as usize],
-        }
-    }
+// impl<'a> CustomTextAnalysisSourceImpl<'a> {
+//     /// Create a new custom TextAnalysisSource for the given text and a trait
+//     /// implementation.
+//     ///
+//     /// Note: this method has no NumberSubsitution specified. See
+//     /// `from_text_and_number_subst_native` if you need number substitution.
+//     pub fn from_text_native(
+//         inner: Box<dyn TextAnalysisSourceMethods + 'a>,
+//         text: Cow<'a, [wchar_t]>,
+//     ) -> CustomTextAnalysisSourceImpl<'a> {
+//         assert!(text.len() <= (u32::MAX as usize));
+//         CustomTextAnalysisSourceImpl {
+//             _refcount: AtomicUsize::new(1),
+//             inner,
+//             text,
+//             number_subst: None,
+//             locale_buf: [0u16; LOCALE_NAME_MAX_LENGTH as usize],
+//         }
+//     }
 
-    /// Create a new custom TextAnalysisSource for the given text and a trait
-    /// implementation.
-    ///
-    /// Note: this method only supports a single `NumberSubstitution` for the
-    /// entire string.
-    pub fn from_text_and_number_subst_native(
-        inner: Box<dyn TextAnalysisSourceMethods + 'a>,
-        text: Cow<'a, [wchar_t]>,
-        number_subst: NumberSubstitution,
-    ) -> CustomTextAnalysisSourceImpl<'a> {
-        assert!(text.len() <= (u32::MAX as usize));
-        CustomTextAnalysisSourceImpl {
-            _refcount: AtomicUsize::new(1),
-            inner,
-            text,
-            number_subst: Some(number_subst),
-            locale_buf: [0u16; LOCALE_NAME_MAX_LENGTH as usize],
-        }
-    }
-}
+//     /// Create a new custom TextAnalysisSource for the given text and a trait
+//     /// implementation.
+//     ///
+//     /// Note: this method only supports a single `NumberSubstitution` for the
+//     /// entire string.
+//     pub fn from_text_and_number_subst_native(
+//         inner: Box<dyn TextAnalysisSourceMethods + 'a>,
+//         text: Cow<'a, [wchar_t]>,
+//         number_subst: NumberSubstitution,
+//     ) -> CustomTextAnalysisSourceImpl<'a> {
+//         assert!(text.len() <= (u32::MAX as usize));
+//         CustomTextAnalysisSourceImpl {
+//             _refcount: AtomicUsize::new(1),
+//             inner,
+//             text,
+//             number_subst: Some(number_subst),
+//             locale_buf: [0u16; LOCALE_NAME_MAX_LENGTH as usize],
+//         }
+//     }
+// }
 
 // impl Com<IDWriteTextAnalysisSource> for CustomTextAnalysisSourceImpl<'_> {
 //     type Vtbl = IDWriteTextAnalysisSourceVtbl;
@@ -217,19 +201,24 @@ impl<'a> CustomTextAnalysisSourceImpl<'a> {
 //     S_OK
 // }
 
-impl NumberSubstitution {
-    pub fn new(
-        subst_method: DWRITE_NUMBER_SUBSTITUTION_METHOD,
-        locale: &str,
-        ignore_user_overrides: bool,
-    ) -> NumberSubstitution {
-        unsafe {
-            let native = DWriteFactory().CreateNumberSubstitution(
-                subst_method,
-                PCWSTR(locale.to_wide_null().as_ptr()),
-                ignore_user_overrides,
-            ).expect("error creating number substitution");
-            NumberSubstitution { native }
-        }
-    }
-}
+// /// A wrapped version of an `IDWriteNumberSubstitution` object.
+// pub struct NumberSubstitution {
+//     pub(crate) native: IDWriteNumberSubstitution,
+// }
+
+// impl NumberSubstitution {
+//     pub fn new(
+//         subst_method: DWRITE_NUMBER_SUBSTITUTION_METHOD,
+//         locale: &str,
+//         ignore_user_overrides: bool,
+//     ) -> NumberSubstitution {
+//         unsafe {
+//             let native = DWriteFactory().CreateNumberSubstitution(
+//                 subst_method,
+//                 PCWSTR(locale.to_wide_null().as_ptr()),
+//                 ignore_user_overrides,
+//             ).expect("error creating number substitution");
+//             NumberSubstitution { native }
+//         }
+//     }
+// }

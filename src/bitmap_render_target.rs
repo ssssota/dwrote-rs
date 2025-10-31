@@ -75,7 +75,7 @@ impl BitmapRenderTarget {
                 measuring_mode,
                 &glyph_run,
                 rendering_params.as_ptr(),
-                COLORREF((r as u32) | ((g as u32) << 8) | ((b as u32) << 16)),
+                color,
                 Some(rect.as_mut_ptr()),
             ).unwrap();
             rect.assume_init()

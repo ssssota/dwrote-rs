@@ -4,17 +4,8 @@
 
 // A temporary custom font collection that exists solely for the face-to-font mapping to work.
 
-use std::{ffi::c_void, mem, sync::atomic::AtomicUsize};
-use windows::{
-    core::HRESULT,
-    Win32::{
-        Foundation::S_OK,
-        Graphics::DirectWrite::{
-            IDWriteFactory, IDWriteFontCollectionLoader, IDWriteFontCollectionLoader_Vtbl,
-            IDWriteFontFile, IDWriteFontFileEnumerator,
-        },
-    },
-};
+use std::sync::atomic::AtomicUsize;
+use windows::Win32::Graphics::DirectWrite::IDWriteFontFile;
 
 use crate::FontFile;
 
@@ -52,7 +43,7 @@ impl CustomFontCollectionLoaderImpl {
     pub fn new(font_files: &[FontFile]) -> CustomFontCollectionLoaderImpl {
         CustomFontCollectionLoaderImpl {
             _refcount: AtomicUsize::new(1),
-            font_files: font_files.iter().map(|file| file.native.clone()).collect(),
+            font_files: font_files.iter().map(|file| file.as_ptr().clone()).collect(),
         }
     }
 }
