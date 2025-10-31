@@ -8,6 +8,7 @@ use std::slice;
 use std::{error, fmt, ptr};
 use windows::Win32::Foundation::{FALSE, TRUE};
 
+use windows::Win32::Graphics::Direct2D::Common::ID2D1SimplifiedGeometrySink;
 use windows::Win32::Graphics::DirectWrite::{
     DWRITE_FONT_AXIS_ATTRIBUTES_NONE, DWRITE_FONT_AXIS_ATTRIBUTES_VARIABLE, DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_VALUE, DWRITE_FONT_FACE_TYPE_BITMAP, DWRITE_FONT_FACE_TYPE_CFF, DWRITE_FONT_FACE_TYPE_RAW_CFF, DWRITE_FONT_FACE_TYPE_TRUETYPE, DWRITE_FONT_FACE_TYPE_TRUETYPE_COLLECTION, DWRITE_FONT_FACE_TYPE_TYPE1, DWRITE_FONT_FACE_TYPE_VECTOR, DWRITE_FONT_SIMULATIONS, DWRITE_GLYPH_METRICS, DWRITE_GLYPH_OFFSET, DWRITE_MATRIX, DWRITE_MEASURING_MODE, DWRITE_RENDERING_MODE, DWRITE_RENDERING_MODE_DEFAULT, IDWriteFontFace, IDWriteFontFace1, IDWriteFontFace5, IDWriteFontFile, IDWriteRenderingParams};
 use windows_core::{HRESULT, Interface};
@@ -373,7 +374,7 @@ impl FontFace {
                 glyph_offsets.as_ptr()
             }
         };
-        let geometry_sink = GeometrySinkImpl::new(outline_builder);
+        let geometry_sink: ID2D1SimplifiedGeometrySink = GeometrySinkImpl::new(outline_builder).into();
         unsafe {
             self.native.GetGlyphRunOutline(
                 em_size,
