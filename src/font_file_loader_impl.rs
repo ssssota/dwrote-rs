@@ -5,8 +5,7 @@ use std::marker::Send;
 use std::mem;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{atomic, Arc, Mutex};
-use windows::core::Interface;
-use windows::Win32::Foundation::E_INVALIDARG;
+use windows::Win32::Foundation::{E_FAIL, E_INVALIDARG, E_NOTIMPL};
 use windows::Win32::Graphics::DirectWrite::{
     DWriteCreateFactory, IDWriteFactory, IDWriteFontFile, IDWriteFontFileLoader, IDWriteFontFileLoader_Impl,
     IDWriteFontFileStream, IDWriteFontFileStream_Impl, DWRITE_FACTORY_TYPE_SHARED,
@@ -19,16 +18,33 @@ impl IDWriteFontFileLoader_Impl for FontFileLoader_Impl {
     fn CreateStreamFromKey(
         &self,
         fontfilereferencekey: *const core::ffi::c_void,
-        fontfilereferencekeysize: u32,
+        _fontfilereferencekeysize: u32,
     ) -> windows_core::Result<IDWriteFontFileStream> {
+        // if fontFileReferenceKey.is_null() || fontFileStream.is_null() {
+        //     return E_INVALIDARG;
+        // }
+        // assert!(fontFileReferenceKeySize == mem::size_of::<usize>() as UINT32);
+        // let key = *(fontFileReferenceKey as *const usize);
+        // let stream = match FONT_FILE_STREAM_MAP.lock().unwrap().get(&key) {
+        //     None => {
+        //         *fontFileStream = ptr::null_mut();
+        //         return E_FAIL;
+        //     }
+        //     Some(&FontFileStreamPtr(file_stream)) => file_stream,
+        // };
+
+        // // This is an addref getter, so make sure to do that!
+        // (*stream).AddRef();
+
+        // *fontFileStream = stream;
+        // S_OK
         if fontfilereferencekey.is_null() {
             return Err(E_INVALIDARG.into());
         }
-        assert!(fontfilereferencekeysize == mem::size_of::<usize>() as u32);
 
         let key = unsafe { *(fontfilereferencekey as *const usize) };
         match FONT_FILE_STREAM_MAP.lock().unwrap().get(&key) {
-            None => Err(E_INVALIDARG.into()),
+            None => Err(E_FAIL.into()),
             Some(&FontFileStreamPtr(ref file_stream)) => Ok(file_stream.clone()),
         }
     }
@@ -58,20 +74,45 @@ impl Drop for FontFileStream {
 }
 
 impl IDWriteFontFileStream_Impl for FontFileStream_Impl {
-    fn ReadFileFragment(&self,fragmentstart: *mut *mut core::ffi::c_void,fileoffset:u64,fragmentsize:u64,fragmentcontext: *mut *mut core::ffi::c_void) -> windows_core::Result<()> {
-        todo!()
+    fn ReadFileFragment(&self, fragment_start: *mut *mut core::ffi::c_void, file_offset:u64, fragment_size:u64, fragment_context: *mut *mut core::ffi::c_void) -> windows_core::Result<()> {
+        // let this = FontFileStream::from_interface(This);
+        // *fragmentContext = ptr::null_mut();
+        // let data = (*this.data).as_ref();
+        // if (fileOffset + fragmentSize) as usize > data.len() {
+        //     return E_INVALIDARG;
+        // }
+        // let index = fileOffset as usize;
+        // *fragmentStart = data[index..].as_ptr() as *const c_void;
+        // S_OK
+        
+        unsafe {
+            *fragment_context = std::ptr::null_mut();
+            let data = self.data.as_ref();
+            if (file_offset + fragment_size) as usize > data.as_ref().len() {
+                return Err(E_INVALIDARG.into());
+            }
+            let index = file_offset as usize;
+            *fragment_start = data.as_ref()[index..].as_ptr() as *mut core::ffi::c_void;
+            Ok(())
+        }
+
     }
 
-    fn ReleaseFileFragment(&self,fragmentcontext: *mut core::ffi::c_void) {
-        todo!()
+    fn ReleaseFileFragment(&self, _fragmentcontext: *mut core::ffi::c_void) {
+        // noop
     }
 
     fn GetFileSize(&self) -> windows_core::Result<u64> {
-        todo!()
+        // let this = FontFileStream::from_interface(This);
+        // *fileSize = (*this.data).as_ref().len() as UINT64;
+        // S_OK
+
+        let slice: &[u8] = self.data.as_ref().as_ref();
+        Ok(slice.len() as u64)
     }
 
     fn GetLastWriteTime(&self) -> windows_core::Result<u64> {
-        todo!()
+        Err(E_NOTIMPL.into())
     }
 }
 
@@ -94,7 +135,7 @@ lazy_static! {
         unsafe {
             let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap();
             let ffl = FontFileLoader {};
-            let ffl: IDWriteFontFileLoader = ffl.cast().unwrap();
+            let ffl: IDWriteFontFileLoader = ffl.into();
             factory.RegisterFontFileLoader(&ffl).unwrap();
             Mutex::new(FontFileLoaderWrapper(ffl))
         }
@@ -110,7 +151,7 @@ impl DataFontHelper {
         unsafe {
             let key = FONT_FILE_KEY.fetch_add(1, atomic::Ordering::Relaxed);
             let font_file_stream = FontFileStream::new(key, font_data);
-            let font_file_stream: IDWriteFontFileStream = font_file_stream.cast().unwrap();
+            let font_file_stream: IDWriteFontFileStream = font_file_stream.into();
 
             {
                 let mut map = FONT_FILE_STREAM_MAP.lock().unwrap();
