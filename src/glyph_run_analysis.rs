@@ -21,7 +21,7 @@ impl GlyphRunAnalysis {
         measuring_mode: DWRITE_MEASURING_MODE,
         baseline_x: f32,
         baseline_y: f32,
-    ) -> windows::core::Result<GlyphRunAnalysis> {
+    ) -> Result<GlyphRunAnalysis, HRESULT> {
         unsafe {
             // let mut native: *mut IDWriteGlyphRunAnalysis = ptr::null_mut();
             // let hr = (*DWriteFactory()).CreateGlyphRunAnalysis(
@@ -63,7 +63,7 @@ impl GlyphRunAnalysis {
     pub fn get_alpha_texture_bounds(
         &self,
         texture_type: DWRITE_TEXTURE_TYPE,
-    ) -> windows::core::Result<RECT> {
+    ) -> Result<RECT, HRESULT> {
         unsafe {
             // let mut rect: RECT = mem::zeroed();
             // rect.left = 1234;
@@ -82,7 +82,7 @@ impl GlyphRunAnalysis {
         &self,
         texture_type: DWRITE_TEXTURE_TYPE,
         rect: RECT,
-    ) -> windows::core::Result<Vec<u8>> {
+    ) -> Result<Vec<u8>, HRESULT> {
         unsafe {
             let rect_pixels = (rect.right - rect.left) * (rect.bottom - rect.top);
             let rect_bytes = rect_pixels

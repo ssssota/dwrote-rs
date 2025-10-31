@@ -3,12 +3,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use std::mem::MaybeUninit;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use windows::Win32::Foundation::FALSE;
 use windows::Win32::Graphics::DirectWrite::{IDWriteFontCollection, IDWriteFontCollectionLoader};
 use windows_core::{BOOL, HRESULT, PCWSTR};
 
-use super::{Font, FontDescriptor, FontFace, FontFamily};
+use super::helpers::ToWide;
+use super::{Font, FontDescriptor, FontFace, FontFamily, DWriteFactory};
 
 static NEXT_ID: AtomicU32 = AtomicU32::new(0);
 

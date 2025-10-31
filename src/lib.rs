@@ -22,7 +22,6 @@ use windows::Win32::Graphics::DirectWrite::{DWriteCreateFactory, IDWriteFactory,
 pub use winapi::um::winnt::HRESULT;
 
 mod helpers;
-use helpers::ToWide;
 
 #[cfg(test)]
 mod test;
@@ -44,8 +43,6 @@ pub use windows::Win32::Graphics::DirectWrite::{
     DWRITE_RENDERING_MODE_NATURAL, DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC,
     DWRITE_RENDERING_MODE_OUTLINE, DWRITE_TEXTURE_TYPE,
 };
-pub use winapi::um::dwrite_1::DWRITE_FONT_METRICS1 as FontMetrics1;
-pub use winapi::um::dwrite_3::DWRITE_FONT_AXIS_VALUE;
 
 #[macro_use]
 mod com_helpers;

@@ -11,11 +11,9 @@ use windows::Win32::Foundation::{FALSE, TRUE};
 use windows::Win32::Graphics::DirectWrite::{
     DWRITE_FONT_AXIS_ATTRIBUTES_NONE, DWRITE_FONT_AXIS_ATTRIBUTES_VARIABLE, DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_VALUE, DWRITE_FONT_FACE_TYPE_BITMAP, DWRITE_FONT_FACE_TYPE_CFF, DWRITE_FONT_FACE_TYPE_RAW_CFF, DWRITE_FONT_FACE_TYPE_TRUETYPE, DWRITE_FONT_FACE_TYPE_TRUETYPE_COLLECTION, DWRITE_FONT_FACE_TYPE_TYPE1, DWRITE_FONT_FACE_TYPE_VECTOR, DWRITE_FONT_SIMULATIONS, DWRITE_GLYPH_METRICS, DWRITE_GLYPH_OFFSET, DWRITE_MATRIX, DWRITE_MEASURING_MODE, DWRITE_RENDERING_MODE, DWRITE_RENDERING_MODE_DEFAULT, IDWriteFontFace, IDWriteFontFace1, IDWriteFontFace5, IDWriteFontFile, IDWriteRenderingParams};
 use windows_core::{BOOL, HRESULT, Interface};
-use super::{DWriteFactory, DefaultDWriteRenderParams, FontFile, FontMetrics};
-use crate::com_helpers::Com;
+use super::{DWriteFactory, FontFile, FontMetrics, DefaultDWriteRenderParams, FontSimulations};
 use crate::geometry_sink_impl::GeometrySinkImpl;
 use crate::outline_builder::OutlineBuilder;
-use crate::FontSimulations;
 
 #[derive(Clone)]
 pub struct FontFace {
@@ -274,7 +272,7 @@ impl FontFace {
             let mut table_data_ptr: *const u8 = ptr::null_mut();
             let mut table_size: u32 = 0;
             let mut table_context: *mut c_void = ptr::null_mut();
-            let mut exists: BOOL = FALSE;
+            let mut exists = FALSE;
             self.native.TryGetFontTable(
                 opentype_table_tag,
                 &mut table_data_ptr as *mut *const _ as *mut *mut c_void,
@@ -314,15 +312,12 @@ impl FontFace {
         pixels_per_dip: f32,
         measure_mode: DWRITE_MEASURING_MODE,
     ) -> DWRITE_RENDERING_MODE {
-        unsafe {
-            let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).unwrap();
-            self.get_recommended_rendering_mode(
-                em_size,
-                pixels_per_dip,
-                measure_mode,
-                &factory.CreateRenderingParams().unwrap(),
-            )
-        }
+        self.get_recommended_rendering_mode(
+            em_size,
+            pixels_per_dip,
+            measure_mode,
+            DefaultDWriteRenderParams()
+        )
     }
 
     #[deprecated(note = "Use `glyph_run_outline` instead.")]
@@ -567,7 +562,7 @@ impl fmt::Display for GlyphRunOutlineError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidInput => write!(f, "Invalid input"),
-            Self::Win32Error(code) => write!(f, "{:#x}", code),
+            Self::Win32Error(code) => write!(f, "{:#x}", code.0),
         }
     }
 }

@@ -3,8 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use windows::Win32::Graphics::DirectWrite::IDWriteGdiInterop;
-
-use super::BitmapRenderTarget;
+use super::{BitmapRenderTarget, DWriteFactory};
 
 pub struct GdiInterop {
     native: IDWriteGdiInterop,

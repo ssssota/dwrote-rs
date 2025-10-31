@@ -3,9 +3,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use std::mem::MaybeUninit;
-use windows::Win32::Foundation::TRUE;
-
-use windows::Win32::Graphics::DirectWrite::{IDWriteFont, IDWriteFontFace, IDWriteFont1, DWRITE_FONT_METRICS, DWRITE_FONT_METRICS1};
+use windows::Win32::Foundation::{FALSE, TRUE};
+use windows::Win32::Graphics::DirectWrite::{IDWriteFont, IDWriteFont1};
 use windows_core::Interface;
 
 use super::*;
@@ -21,9 +20,8 @@ impl Font {
         Font { native }
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut IDWriteFont {
-        // (*self.native.get()).as_raw()
-        unimplemented!()
+    pub fn as_ptr(&self) -> &IDWriteFont {
+        &self.native
     }
 
     pub fn to_descriptor(&self) -> FontDescriptor {
@@ -89,10 +87,19 @@ impl Font {
         //         None
         //     }
         // }
-        // unsafe {
-        //     let names = self.native.GetInformationalStrings(informationalstringid, informationalstrings, exists).ok()?;
-        // }
-        unimplemented!()
+        unsafe {
+            let mut exists = FALSE;
+            let mut strings = None;
+            self
+                .native
+                .GetInformationalStrings(id.into(), &mut strings, &mut exists)
+                .ok()?;
+            if exists == TRUE {
+                strings.map(|s| get_locale_string(s))
+            } else {
+                None
+            }
+        }
     }
 
     pub fn create_font_face(&self) -> FontFace {
