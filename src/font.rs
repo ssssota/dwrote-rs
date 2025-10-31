@@ -63,30 +63,11 @@ impl Font {
     }
 
     pub fn face_name(&self) -> String {
-        // unsafe {
-        //     let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
-        //     let hr = (*self.native.get()).GetFaceNames(&mut names);
-        //     assert!(hr == 0);
-
-        //     get_locale_string(&mut ComPtr::from_raw(names))
-        // }
         let faces = unsafe { self.native.GetFaceNames().unwrap() };
         get_locale_string(faces).unwrap()
     }
 
     pub fn informational_string(&self, id: InformationalStringId) -> Option<String> {
-        // unsafe {
-        //     let mut names: *mut IDWriteLocalizedStrings = ptr::null_mut();
-        //     let mut exists = FALSE;
-        //     let id = id as DWRITE_INFORMATIONAL_STRING_ID;
-        //     let hr = (*self.native.get()).GetInformationalStrings(id, &mut names, &mut exists);
-        //     assert!(hr == S_OK);
-        //     if exists == TRUE {
-        //         Some(get_locale_string(&mut ComPtr::from_raw(names)))
-        //     } else {
-        //         None
-        //     }
-        // }
         unsafe {
             let mut exists = FALSE;
             let mut strings = None;
@@ -106,31 +87,12 @@ impl Font {
         // FIXME create_font_face should cache the FontFace and return it,
         // there's a 1:1 relationship
         unsafe {
-            // let mut face: *mut IDWriteFontFace = ptr::null_mut();
-            // let hr = (*self.native.get()).CreateFontFace(&mut face);
-            // assert!(hr == 0);
-            // FontFace::take(ComPtr::from_raw(face))
             let face = self.native.CreateFontFace().unwrap();
             FontFace::take(face)
         }
     }
 
     pub fn metrics(&self) -> FontMetrics {
-        // unsafe {
-        //     let font_1: Option<ComPtr<IDWriteFont1>> = (*self.native.get()).cast().ok();
-        //     match font_1 {
-        //         None => {
-        //             let mut metrics = mem::zeroed();
-        //             (*self.native.get()).GetMetrics(&mut metrics);
-        //             FontMetrics::Metrics0(metrics)
-        //         }
-        //         Some(font_1) => {
-        //             let mut metrics_1 = mem::zeroed();
-        //             font_1.GetMetrics(&mut metrics_1);
-        //             FontMetrics::Metrics1(metrics_1)
-        //         }
-        //     }
-        // }
         let font1 = self.native.cast::<IDWriteFont1>().ok();
         match font1 {
             None => unsafe {

@@ -75,16 +75,6 @@ impl Drop for FontFileStream {
 
 impl IDWriteFontFileStream_Impl for FontFileStream_Impl {
     fn ReadFileFragment(&self, fragment_start: *mut *mut core::ffi::c_void, file_offset:u64, fragment_size:u64, fragment_context: *mut *mut core::ffi::c_void) -> windows_core::Result<()> {
-        // let this = FontFileStream::from_interface(This);
-        // *fragmentContext = ptr::null_mut();
-        // let data = (*this.data).as_ref();
-        // if (fileOffset + fragmentSize) as usize > data.len() {
-        //     return E_INVALIDARG;
-        // }
-        // let index = fileOffset as usize;
-        // *fragmentStart = data[index..].as_ptr() as *const c_void;
-        // S_OK
-        
         unsafe {
             *fragment_context = std::ptr::null_mut();
             let data = self.data.as_ref();
@@ -103,10 +93,6 @@ impl IDWriteFontFileStream_Impl for FontFileStream_Impl {
     }
 
     fn GetFileSize(&self) -> windows_core::Result<u64> {
-        // let this = FontFileStream::from_interface(This);
-        // *fileSize = (*this.data).as_ref().len() as UINT64;
-        // S_OK
-
         let slice: &[u8] = self.data.as_ref().as_ref();
         Ok(slice.len() as u64)
     }

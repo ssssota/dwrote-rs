@@ -58,22 +58,6 @@ impl FontCollection {
 
     pub fn from_loader(collection_loader: &IDWriteFontCollectionLoader) -> FontCollection {
         unsafe {
-            // assert_eq!(
-            //     (*factory).RegisterFontCollectionLoader(collection_loader.clone().into_raw()),
-            //     S_OK
-            // );
-            // let mut collection: *mut IDWriteFontCollection = ptr::null_mut();
-            // let id = NEXT_ID.fetch_add(1, Ordering::SeqCst);
-            // assert_eq!(
-            //     (*factory).CreateCustomFontCollection(
-            //         collection_loader.clone().into_raw(),
-            //         &id as *const usize as *const _,
-            //         mem::size_of::<AtomicUsize>() as u32,
-            //         &mut collection
-            //     ),
-            //     S_OK
-            // );
-            // FontCollection::take(ComPtr::from_raw(collection))
             let factory = DWriteFactory();
             factory.RegisterFontCollectionLoader(collection_loader).unwrap();
             let id = NEXT_ID.fetch_add(1, Ordering::SeqCst);

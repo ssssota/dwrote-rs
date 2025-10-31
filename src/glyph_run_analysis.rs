@@ -23,26 +23,6 @@ impl GlyphRunAnalysis {
         baseline_y: f32,
     ) -> Result<GlyphRunAnalysis, HRESULT> {
         unsafe {
-            // let mut native: *mut IDWriteGlyphRunAnalysis = ptr::null_mut();
-            // let hr = (*DWriteFactory()).CreateGlyphRunAnalysis(
-            //     glyph_run as *const DWRITE_GLYPH_RUN,
-            //     pixels_per_dip,
-            //     transform
-            //         .as_ref()
-            //         .map(|x| x as *const _)
-            //         .unwrap_or(ptr::null()),
-            //     rendering_mode,
-            //     measuring_mode,
-            //     baseline_x,
-            //     baseline_y,
-            //     &mut native,
-            // );
-            // if hr != 0 {
-            //     Err(hr)
-            // } else {
-            //     Ok(GlyphRunAnalysis::take(ComPtr::from_raw(native)))
-            // }
-
             let native = DWriteFactory().CreateGlyphRunAnalysis(
                 glyph_run,
                 pixels_per_dip,
@@ -65,15 +45,6 @@ impl GlyphRunAnalysis {
         texture_type: DWRITE_TEXTURE_TYPE,
     ) -> Result<RECT, HRESULT> {
         unsafe {
-            // let mut rect: RECT = mem::zeroed();
-            // rect.left = 1234;
-            // rect.top = 1234;
-            // let hr = (*self.native.get()).GetAlphaTextureBounds(texture_type, &mut rect);
-            // if hr != 0 {
-            //     Err(hr)
-            // } else {
-            //     Ok(rect)
-            // }
             self.native.GetAlphaTextureBounds(texture_type).map_err(|e| e.code())
         }
     }

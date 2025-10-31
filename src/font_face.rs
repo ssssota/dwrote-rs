@@ -54,12 +54,6 @@ impl FontFace {
 
     pub fn files(&self) -> Result<Vec<FontFile>, HRESULT> {
         unsafe {
-            // self.raw_files().map(|file_ptrs| {
-            //     file_ptrs
-            //         .iter()
-            //         .map(|p| FontFile::take(ComPtr::from_raw(*p)))
-            //         .collect()
-            // })
             self.raw_files().map(|file_ptrs| {
                 file_ptrs
                     .into_iter()
@@ -111,18 +105,6 @@ impl FontFace {
     }
 
     pub fn glyph_indices(&self, code_points: &[u32]) -> Result<Vec<u16>, HRESULT> {
-        // let mut glyph_indices: Vec<u16> = vec![0; code_points.len()];
-        // unsafe {
-        //     let hr = (*self.native.get()).GetGlyphIndices(
-        //         code_points.as_ptr(),
-        //         code_points.len() as u32,
-        //         glyph_indices.as_mut_ptr(),
-        //     );
-        //     if hr != S_OK {
-        //         return Err(hr);
-        //     }
-        //     Ok(glyph_indices)
-        // }
         unsafe {
             let mut glyph_indices: Vec<u16> = vec![0; code_points.len()];
             self.native.GetGlyphIndices(
@@ -149,19 +131,6 @@ impl FontFace {
         glyph_indices: &[u16],
         is_sideways: bool,
     ) -> Result<Vec<DWRITE_GLYPH_METRICS>, HRESULT> {
-        // unsafe {
-        //     let mut metrics: Vec<DWRITE_GLYPH_METRICS> = vec![zeroed(); glyph_indices.len()];
-        //     let hr = (*self.native.get()).GetDesignGlyphMetrics(
-        //         glyph_indices.as_ptr(),
-        //         glyph_indices.len() as u32,
-        //         metrics.as_mut_ptr(),
-        //         is_sideways as BOOL,
-        //     );
-        //     if hr != S_OK {
-        //         return Err(hr);
-        //     }
-        //     Ok(metrics)
-        // }
         unsafe {
             let mut metrics: Vec<DWRITE_GLYPH_METRICS> = vec![zeroed(); glyph_indices.len()];
             self.native.GetDesignGlyphMetrics(
@@ -205,21 +174,6 @@ impl FontFace {
         is_sideways: bool,
     ) -> Result<Vec<DWRITE_GLYPH_METRICS>, HRESULT> {
         unsafe {
-            // let mut metrics: Vec<DWRITE_GLYPH_METRICS> = vec![zeroed(); glyph_indices.len()];
-            // let hr = (*self.native.get()).GetGdiCompatibleGlyphMetrics(
-            //     em_size,
-            //     pixels_per_dip,
-            //     transform,
-            //     use_gdi_natural as BOOL,
-            //     glyph_indices.as_ptr(),
-            //     glyph_indices.len() as u32,
-            //     metrics.as_mut_ptr(),
-            //     is_sideways as BOOL,
-            // );
-            // if hr != S_OK {
-            //     return Err(hr);
-            // }
-            // Ok(metrics)
             let mut metrics: Vec<DWRITE_GLYPH_METRICS> = vec![zeroed(); glyph_indices.len()];
             self.native.GetGdiCompatibleGlyphMetrics(
                 em_size,
@@ -245,32 +199,6 @@ impl FontFace {
     /// NB: The bytes of the tag are reversed! You probably want to use the `u32::swap_bytes()`
     /// method on the tag value before calling this method.
     pub fn font_table(&self, opentype_table_tag: u32) -> Result<Option<Vec<u8>>, HRESULT> {
-        // let mut table_data_ptr: *const u8 = ptr::null_mut();
-        // let mut table_size: u32 = 0;
-        // let mut table_context: *mut c_void = ptr::null_mut();
-        // let mut exists: BOOL = FALSE;
-        // unsafe {
-        //     let hr = (*self.native.get()).TryGetFontTable(
-        //         opentype_table_tag,
-        //         &mut table_data_ptr as *mut *const _ as *mut *const c_void,
-        //         &mut table_size,
-        //         &mut table_context,
-        //         &mut exists,
-        //     );
-        //     if hr != S_OK {
-        //         return Err(hr);
-        //     }
-
-        //     if exists == FALSE {
-        //         return Ok(None);
-        //     }
-
-        //     let table_bytes = slice::from_raw_parts(table_data_ptr, table_size as usize).to_vec();
-
-        //     (*self.native.get()).ReleaseFontTable(table_context);
-
-        //     Ok(Some(table_bytes))
-        // }
         unsafe {
             let mut table_data_ptr: *const u8 = ptr::null_mut();
             let mut table_size: u32 = 0;
@@ -447,27 +375,6 @@ impl FontFace {
     pub fn get_index(&self) -> u32 {
         unsafe { self.native.GetIndex() }
     }
-
-    // #[inline]
-    // unsafe fn get_face1(&self) -> &Option<IDWriteFontFace1> {
-    //     &self.face1
-    // }
-
-    // #[inline]
-    // unsafe fn get_face5(&self) -> &Option<IDWriteFontFace5> {
-    //     &self.face5
-    // }
-
-    // #[inline]
-    // unsafe fn get_interface<I: Interface>(
-    //     &self,
-    //     interface: &UnsafeCell<Option<I>>,
-    // ) -> Option<I> {
-    //     if (*interface.get()).is_none() {
-    //         *interface.get() = (*self.native.get()).cast().ok()
-    //     }
-    //     (*interface.get()).clone()
-    // }
 
     pub fn has_variations(&self) -> bool {
         unsafe {

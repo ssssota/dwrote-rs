@@ -9,35 +9,12 @@ use windows::Win32::Graphics::DirectWrite::IDWriteFontFile;
 
 use crate::FontFile;
 
-// static FONT_COLLECTION_LOADER_VTBL: IDWriteFontCollectionLoader_Vtbl =
-//     IDWriteFontCollectionLoader_Vtbl {
-//         parent: implement_iunknown!(static IDWriteFontCollectionLoader,
-//                                     CustomFontCollectionLoaderImpl),
-//         CreateEnumeratorFromKey: CustomFontCollectionLoaderImpl_CreateEnumeratorFromKey,
-//     };
-
 #[repr(C)]
 pub struct CustomFontCollectionLoaderImpl {
     // NB: This must be the first field.
     _refcount: AtomicUsize,
     font_files: Vec<IDWriteFontFile>,
 }
-
-// impl Com<IDWriteFontCollectionLoader> for CustomFontCollectionLoaderImpl {
-//     type Vtbl = IDWriteFontCollectionLoader_Vtbl;
-//     #[inline]
-//     fn vtbl() -> &'static IDWriteFontCollectionLoader_Vtbl {
-//         &FONT_COLLECTION_LOADER_VTBL
-//     }
-// }
-
-// impl Com<IUnknown> for CustomFontCollectionLoaderImpl {
-//     type Vtbl = IUnknownVtbl;
-//     #[inline]
-//     fn vtbl() -> &'static IUnknownVtbl {
-//         &FONT_COLLECTION_LOADER_VTBL.parent
-//     }
-// }
 
 impl CustomFontCollectionLoaderImpl {
     pub fn new(font_files: &[FontFile]) -> CustomFontCollectionLoaderImpl {

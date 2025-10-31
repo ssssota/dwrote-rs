@@ -44,9 +44,6 @@ pub use windows::Win32::Graphics::DirectWrite::{
     DWRITE_RENDERING_MODE_OUTLINE, DWRITE_TEXTURE_TYPE,
 };
 
-#[macro_use]
-mod com_helpers;
-
 mod bitmap_render_target;
 pub use bitmap_render_target::BitmapRenderTarget;
 mod font;
