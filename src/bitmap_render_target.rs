@@ -27,7 +27,7 @@ impl BitmapRenderTarget {
     // A dip is 1/96th of an inch, so this value is the number of pixels per inch divided by 96.
     pub fn set_pixels_per_dip(&self, ppd: f32) {
         unsafe {
-            self.native.SetPixelsPerDip(ppd);
+            let _ = self.native.SetPixelsPerDip(ppd);
         }
     }
 

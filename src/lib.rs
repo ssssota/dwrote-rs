@@ -19,7 +19,7 @@ include!("types.rs");
 
 use windows::Win32::Graphics::DirectWrite::{DWriteCreateFactory, IDWriteFactory, DWRITE_FACTORY_TYPE_SHARED, IDWriteRenderingParams};
 
-pub use winapi::um::winnt::HRESULT;
+pub use windows_core::HRESULT;
 
 mod helpers;
 

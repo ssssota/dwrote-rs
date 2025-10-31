@@ -448,15 +448,15 @@ impl FontFace {
         unsafe { self.native.GetIndex() }
     }
 
-    #[inline]
-    unsafe fn get_face1(&self) -> &Option<IDWriteFontFace1> {
-        &self.face1
-    }
+    // #[inline]
+    // unsafe fn get_face1(&self) -> &Option<IDWriteFontFace1> {
+    //     &self.face1
+    // }
 
-    #[inline]
-    unsafe fn get_face5(&self) -> &Option<IDWriteFontFace5> {
-        &self.face5
-    }
+    // #[inline]
+    // unsafe fn get_face5(&self) -> &Option<IDWriteFontFace5> {
+    //     &self.face5
+    // }
 
     // #[inline]
     // unsafe fn get_interface<I: Interface>(
@@ -483,8 +483,7 @@ impl FontFace {
     /// variation axes and their values. If the font does not have variations,
     /// return an empty `Vec`.
     pub fn variations(&self) -> Result<Vec<DWRITE_FONT_AXIS_VALUE>, HRESULT> {
-        let face5 = unsafe { self.get_face5() };
-        let Some(face5) = face5 else {
+        let Some(face5) = &self.face5 else {
             return Ok(vec![]);
         };
         if unsafe { face5.HasVariations() != TRUE } {
@@ -528,7 +527,7 @@ impl FontFace {
         axis_values: &[DWRITE_FONT_AXIS_VALUE],
     ) -> Option<FontFace> {
         unsafe {
-            if let Some(face5) = self.get_face5() {
+            if let Some(face5) = &self.face5 {
                 let resource = face5.GetFontResource().ok()?;
                 let face = resource.CreateFontFace(simulations, axis_values).ok()?;
                 let face = face.cast::<IDWriteFontFace>().unwrap();

@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use windows::Win32::Foundation::FALSE;
 use windows_core::{HRESULT, PCWSTR, Interface};
-use windows::Win32::Graphics::DirectWrite::{IDWriteFontFile, IDWriteFontFileStream, DWRITE_FONT_FACE_TYPE, DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS, IDWriteLocalFontFileLoader};
+use windows::Win32::Graphics::DirectWrite::{IDWriteFontFile, DWRITE_FONT_FACE_TYPE, DWRITE_FONT_FACE_TYPE_UNKNOWN, DWRITE_FONT_FILE_TYPE_UNKNOWN, DWRITE_FONT_SIMULATIONS, IDWriteLocalFontFileLoader};
 
 use super::{FontFace, DWriteFactory};
 use crate::font_file_loader_impl::DataFontHelper;
@@ -21,7 +21,7 @@ use crate::helpers::ToWide;
 #[derive(Clone)]
 pub struct FontFile {
     native: IDWriteFontFile,
-    stream: Option<IDWriteFontFileStream>,
+    // stream: Option<IDWriteFontFileStream>,
     data_key: usize,
     face_type: DWRITE_FONT_FACE_TYPE,
 }
@@ -39,7 +39,7 @@ impl FontFile {
 
             let mut ff = FontFile {
                 native: font_file,
-                stream: None,
+                // stream: None,
                 data_key: 0,
                 face_type: DWRITE_FONT_FACE_TYPE_UNKNOWN,
             };
@@ -53,11 +53,11 @@ impl FontFile {
     }
 
     pub fn new_from_buffer(data: Arc<dyn AsRef<[u8]> + Sync + Send>) -> Option<FontFile> {
-        let (font_file, font_file_stream, key) = DataFontHelper::register_font_buffer(data);
+        let (font_file, _font_file_stream, key) = DataFontHelper::register_font_buffer(data);
 
         let mut ff = FontFile {
             native: font_file,
-            stream: Some(font_file_stream),
+            // stream: Some(font_file_stream),
             data_key: key,
             face_type: DWRITE_FONT_FACE_TYPE_UNKNOWN,
         };
@@ -70,11 +70,11 @@ impl FontFile {
     }
 
     pub fn analyze_buffer(buffer: Arc<dyn AsRef<[u8]> + Sync + Send>) -> u32 {
-        let (font_file, font_file_stream, key) = DataFontHelper::register_font_buffer(buffer);
+        let (font_file, _font_file_stream, key) = DataFontHelper::register_font_buffer(buffer);
 
         let mut ff = FontFile {
             native: font_file,
-            stream: Some(font_file_stream),
+            // stream: Some(font_file_stream),
             data_key: key,
             face_type: DWRITE_FONT_FACE_TYPE_UNKNOWN,
         };
@@ -106,7 +106,7 @@ impl FontFile {
     pub fn take(native: IDWriteFontFile) -> FontFile {
         let mut ff = FontFile {
             native,
-            stream: None,
+            // stream: None,
             data_key: 0,
             face_type: DWRITE_FONT_FACE_TYPE_UNKNOWN,
         };
